@@ -37,7 +37,7 @@ try:
     terms = get_cached_terms()
 except Exception as e:
 
-import traceback
+    import traceback
 
     st.error(str(e))
     st.code(traceback.format_exc())
