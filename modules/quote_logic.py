@@ -8,29 +8,16 @@ QUOTE_FOLDER = "output/Quotes"
 SPREADSHEET_NAME = "AccuSense Quote Database"
 
 
-# =====================================================
-# ENSURE LOCAL FOLDER EXISTS
-# =====================================================
-
 def ensure_quote_folder():
     os.makedirs(QUOTE_FOLDER, exist_ok=True)
 
-
-# =====================================================
-# GOOGLE SHEETS CLIENT
-# =====================================================
 
 def get_google_client():
     from modules.google_sheets import client
     return client
 
 
-# =====================================================
-# AUTOMATIC QUOTE NUMBER FROM GOOGLE SHEETS
-# =====================================================
-
 def generate_quote_number(salesperson):
-
     client = get_google_client()
 
     spreadsheet = client.open(SPREADSHEET_NAME)
@@ -44,50 +31,27 @@ def generate_quote_number(salesperson):
         current_number = 1001
 
     next_number = current_number + 1
-
-    settings_sheet.update(
-        "B1",
-        [[next_number]]
-    )
+    settings_sheet.update("B1", [[next_number]])
 
     today = datetime.datetime.now()
-    year = today.strftime("%Y")
+    date_part = today.strftime("%Y%m%d")
 
-    quote_number = f"Q{year}-{current_number}"
+    quote_number = f"Q-{date_part}-{current_number}"
 
     return quote_number
 
 
-# =====================================================
-# CALCULATE TOTALS
-# =====================================================
-
 def calculate_totals(quote_df):
-
     if quote_df is None or quote_df.empty:
         return 0.0, 0.0, 0.0
 
     df = quote_df.copy()
 
-    df["Qty"] = pd.to_numeric(
-        df["Qty"],
-        errors="coerce"
-    ).fillna(0)
+    df["Qty"] = pd.to_numeric(df["Qty"], errors="coerce").fillna(0)
+    df["Unit Price"] = pd.to_numeric(df["Unit Price"], errors="coerce").fillna(0)
+    df["Discount"] = pd.to_numeric(df["Discount"], errors="coerce").fillna(0)
 
-    df["Unit Price"] = pd.to_numeric(
-        df["Unit Price"],
-        errors="coerce"
-    ).fillna(0)
-
-    df["Discount"] = pd.to_numeric(
-        df["Discount"],
-        errors="coerce"
-    ).fillna(0)
-
-    df["Total"] = (
-        df["Qty"]
-        * df["Unit Price"]
-    )
+    df["Total"] = df["Qty"] * df["Unit Price"]
 
     subtotal = float(df["Total"].sum())
     vat = subtotal * 0.15
@@ -95,10 +59,6 @@ def calculate_totals(quote_df):
 
     return subtotal, vat, grand_total
 
-
-# =====================================================
-# SAVE QUOTE LOCALLY AS JSON
-# =====================================================
 
 def save_quote_json(
     quote_number,
@@ -115,11 +75,13 @@ def save_quote_json(
     total,
     pdf_path
 ):
-
     ensure_quote_folder()
+
+    saved_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     quote_data = {
         "quote_number": quote_number,
+        "date_created": saved_at,
         "customer_name": customer_name,
         "company_name": company_name,
         "site_name": site_name,
@@ -131,32 +93,68 @@ def save_quote_json(
         "subtotal": subtotal,
         "vat": vat,
         "total": total,
-        "pdf_path": pdf_path,
-        "saved_at": datetime.datetime.now().isoformat()
+        "pdf_path": pdf_path
     }
 
-    file_path = os.path.join(
-        QUOTE_FOLDER,
-        f"{quote_number}.json"
-    )
+    file_path = os.path.join(QUOTE_FOLDER, f"{quote_number}.json")
 
     with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(
-            quote_data,
-            f,
-            indent=4,
-            ensure_ascii=False
-        )
+        json.dump(quote_data, f, indent=4, ensure_ascii=False)
+
+    save_quote_to_google_sheet(
+        quote_number=quote_number,
+        date_created=saved_at,
+        salesperson=salesperson,
+        customer_name=customer_name,
+        company_name=company_name,
+        site_name=site_name,
+        subtotal=subtotal,
+        vat=vat,
+        total=total,
+        pdf_path=pdf_path
+    )
 
     return file_path
 
 
-# =====================================================
-# LOAD SAVED QUOTES
-# =====================================================
+def save_quote_to_google_sheet(
+    quote_number,
+    date_created,
+    salesperson,
+    customer_name,
+    company_name,
+    site_name,
+    subtotal,
+    vat,
+    total,
+    pdf_path
+):
+    try:
+        client = get_google_client()
+        spreadsheet = client.open(SPREADSHEET_NAME)
+        sheet = spreadsheet.worksheet("QuoteRegister")
+
+        sheet.append_row([
+            quote_number,
+            date_created,
+            salesperson,
+            customer_name,
+            company_name,
+            site_name,
+            round(float(subtotal), 2),
+            round(float(vat), 2),
+            round(float(total), 2),
+            pdf_path
+        ])
+
+        return True
+
+    except Exception as e:
+        print(f"Google QuoteRegister save error: {e}")
+        return False
+
 
 def load_saved_quotes():
-
     ensure_quote_folder()
 
     files = [
@@ -165,33 +163,19 @@ def load_saved_quotes():
     ]
 
     files.sort(reverse=True)
-
     return files
 
 
-# =====================================================
-# LOAD SPECIFIC SAVED QUOTE
-# =====================================================
-
 def load_quote_json(filename):
-
     ensure_quote_folder()
 
-    file_path = os.path.join(
-        QUOTE_FOLDER,
-        filename
-    )
+    file_path = os.path.join(QUOTE_FOLDER, filename)
 
     with open(file_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-# =====================================================
-# REVISION NUMBER
-# =====================================================
-
 def next_revision_number(base_quote_number):
-
     ensure_quote_folder()
 
     files = [
@@ -200,6 +184,4 @@ def next_revision_number(base_quote_number):
         and f.endswith(".json")
     ]
 
-    revision_count = len(files)
-
-    return revision_count + 1
+    return len(files) + 1
