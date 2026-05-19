@@ -17,10 +17,13 @@ def get_google_client():
     return client
 
 
-def generate_quote_number(salesperson):
+def get_spreadsheet():
     client = get_google_client()
+    return client.open(SPREADSHEET_NAME)
 
-    spreadsheet = client.open(SPREADSHEET_NAME)
+
+def generate_quote_number(salesperson=""):
+    spreadsheet = get_spreadsheet()
     settings_sheet = spreadsheet.worksheet("Settings")
 
     current_number_raw = settings_sheet.acell("B1").value
@@ -33,12 +36,46 @@ def generate_quote_number(salesperson):
     next_number = current_number + 1
     settings_sheet.update("B1", [[next_number]])
 
-    today = datetime.datetime.now()
-    date_part = today.strftime("%Y%m%d")
+    date_part = datetime.datetime.now().strftime("%Y%m%d")
 
-    quote_number = f"Q-{date_part}-{current_number}"
+    return f"Q-{date_part}-{current_number}"
+
+
+def get_base_quote_number(quote_number):
+    quote_number = str(quote_number)
+
+    if "-REV" in quote_number:
+        return quote_number.split("-REV")[0]
 
     return quote_number
+
+
+def next_revision_number(base_quote_number):
+    spreadsheet = get_spreadsheet()
+    register_sheet = spreadsheet.worksheet("QuoteRegister")
+
+    rows = register_sheet.get_all_records()
+
+    highest_revision = 0
+
+    for row in rows:
+        row_base = str(row.get("Base Quote Number", "")).strip()
+        revision = str(row.get("Revision", "")).strip()
+
+        if row_base == base_quote_number:
+            if revision.upper().startswith("REV"):
+                try:
+                    rev_num = int(revision.upper().replace("REV", ""))
+                    highest_revision = max(highest_revision, rev_num)
+                except Exception:
+                    pass
+
+    return highest_revision + 1
+
+
+def generate_revision_quote_number(base_quote_number):
+    revision_number = next_revision_number(base_quote_number)
+    return f"{base_quote_number}-REV{revision_number:02d}", f"REV{revision_number:02d}"
 
 
 def calculate_totals(quote_df):
@@ -51,7 +88,11 @@ def calculate_totals(quote_df):
     df["Unit Price"] = pd.to_numeric(df["Unit Price"], errors="coerce").fillna(0)
     df["Discount"] = pd.to_numeric(df["Discount"], errors="coerce").fillna(0)
 
-    df["Total"] = df["Qty"] * df["Unit Price"]
+    df["Total"] = (
+        df["Qty"]
+        * df["Unit Price"]
+        * (1 - df["Discount"] / 100)
+    )
 
     subtotal = float(df["Total"].sum())
     vat = subtotal * 0.15
@@ -77,11 +118,19 @@ def save_quote_json(
 ):
     ensure_quote_folder()
 
-    saved_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    date_created = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    base_quote_number = get_base_quote_number(quote_number)
+
+    if "-REV" in quote_number:
+        revision = quote_number.split("-")[-1]
+    else:
+        revision = "ORIGINAL"
 
     quote_data = {
         "quote_number": quote_number,
-        "date_created": saved_at,
+        "base_quote_number": base_quote_number,
+        "revision": revision,
+        "date_created": date_created,
         "customer_name": customer_name,
         "company_name": company_name,
         "site_name": site_name,
@@ -101,87 +150,113 @@ def save_quote_json(
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(quote_data, f, indent=4, ensure_ascii=False)
 
-    save_quote_to_google_sheet(
-        quote_number=quote_number,
-        date_created=saved_at,
-        salesperson=salesperson,
-        customer_name=customer_name,
-        company_name=company_name,
-        site_name=site_name,
-        subtotal=subtotal,
-        vat=vat,
-        total=total,
-        pdf_path=pdf_path
-    )
+    save_quote_to_google_sheets(quote_data)
 
     return file_path
 
 
-def save_quote_to_google_sheet(
-    quote_number,
-    date_created,
-    salesperson,
-    customer_name,
-    company_name,
-    site_name,
-    subtotal,
-    vat,
-    total,
-    pdf_path
-):
-    try:
-        client = get_google_client()
-        spreadsheet = client.open(SPREADSHEET_NAME)
-        sheet = spreadsheet.worksheet("QuoteRegister")
+def save_quote_to_google_sheets(quote_data):
+    spreadsheet = get_spreadsheet()
 
-        sheet.append_row([
-            quote_number,
-            date_created,
-            salesperson,
-            customer_name,
-            company_name,
-            site_name,
-            round(float(subtotal), 2),
-            round(float(vat), 2),
-            round(float(total), 2),
-            pdf_path
+    register_sheet = spreadsheet.worksheet("QuoteRegister")
+    items_sheet = spreadsheet.worksheet("QuoteItems")
+
+    register_sheet.append_row([
+        quote_data["quote_number"],
+        quote_data["base_quote_number"],
+        quote_data["revision"],
+        quote_data["date_created"],
+        quote_data["salesperson"],
+        quote_data["customer_name"],
+        quote_data["company_name"],
+        quote_data["site_name"],
+        round(float(quote_data["subtotal"]), 2),
+        round(float(quote_data["vat"]), 2),
+        round(float(quote_data["total"]), 2),
+        quote_data["pdf_path"]
+    ])
+
+    for idx, item in enumerate(quote_data["items"], start=1):
+        items_sheet.append_row([
+            quote_data["quote_number"],
+            idx,
+            item.get("Identification", ""),
+            item.get("Product", ""),
+            item.get("Description", ""),
+            item.get("Billing", ""),
+            item.get("Qty", 0),
+            item.get("Discount", 0),
+            item.get("Unit Price", 0),
+            item.get("Total", 0)
         ])
-
-        return True
-
-    except Exception as e:
-        print(f"Google QuoteRegister save error: {e}")
-        return False
 
 
 def load_saved_quotes():
-    ensure_quote_folder()
+    spreadsheet = get_spreadsheet()
+    register_sheet = spreadsheet.worksheet("QuoteRegister")
 
-    files = [
-        f for f in os.listdir(QUOTE_FOLDER)
-        if f.endswith(".json")
-    ]
+    rows = register_sheet.get_all_records()
 
-    files.sort(reverse=True)
-    return files
+    quote_numbers = []
 
+    for row in rows:
+        quote_number = str(row.get("Quote Number", "")).strip()
+        if quote_number:
+            quote_numbers.append(quote_number)
 
-def load_quote_json(filename):
-    ensure_quote_folder()
+    quote_numbers = sorted(list(set(quote_numbers)), reverse=True)
 
-    file_path = os.path.join(QUOTE_FOLDER, filename)
-
-    with open(file_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return quote_numbers
 
 
-def next_revision_number(base_quote_number):
-    ensure_quote_folder()
+def load_quote_json(quote_number):
+    spreadsheet = get_spreadsheet()
 
-    files = [
-        f for f in os.listdir(QUOTE_FOLDER)
-        if f.startswith(base_quote_number)
-        and f.endswith(".json")
-    ]
+    register_sheet = spreadsheet.worksheet("QuoteRegister")
+    items_sheet = spreadsheet.worksheet("QuoteItems")
 
-    return len(files) + 1
+    register_rows = register_sheet.get_all_records()
+    item_rows = items_sheet.get_all_records()
+
+    selected_register = None
+
+    for row in register_rows:
+        if str(row.get("Quote Number", "")).strip() == str(quote_number).strip():
+            selected_register = row
+            break
+
+    if selected_register is None:
+        raise ValueError(f"Quote not found: {quote_number}")
+
+    items = []
+
+    for row in item_rows:
+        if str(row.get("Quote Number", "")).strip() == str(quote_number).strip():
+            items.append({
+                "Identification": row.get("Identification", ""),
+                "Product": row.get("Product", ""),
+                "Description": row.get("Description", ""),
+                "Billing": row.get("Billing", ""),
+                "Qty": row.get("Qty", 1),
+                "Discount": row.get("Discount", 0),
+                "Unit Price": row.get("Unit Price", 0),
+                "Total": row.get("Total", 0)
+            })
+
+    return {
+        "quote_number": selected_register.get("Quote Number", ""),
+        "base_quote_number": selected_register.get("Base Quote Number", ""),
+        "revision": selected_register.get("Revision", ""),
+        "date_created": selected_register.get("Date Created", ""),
+        "customer_name": selected_register.get("Customer", ""),
+        "company_name": selected_register.get("Company", ""),
+        "site_name": selected_register.get("Site", ""),
+        "salesperson": selected_register.get("Salesperson", ""),
+        "salesperson_phone": "",
+        "salesperson_email": "",
+        "items": items,
+        "subtotal": selected_register.get("Subtotal", 0),
+        "vat": selected_register.get("VAT", 0),
+        "total": selected_register.get("Total", 0),
+        "pdf_path": selected_register.get("PDF Path", "")
+    }
