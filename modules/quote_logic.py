@@ -1,74 +1,104 @@
 import os
 import json
-from datetime import datetime
+import datetime
+import pandas as pd
+
 
 QUOTE_FOLDER = "output/Quotes"
+SPREADSHEET_NAME = "AccuSense Quote Database"
 
-def salesperson_initials(salesperson):
-    if not salesperson.strip():
-        return "XX"
 
-    parts = salesperson.strip().split()
+# =====================================================
+# ENSURE LOCAL FOLDER EXISTS
+# =====================================================
 
-    if len(parts) >= 2:
-        return (parts[0][0] + parts[-1][0]).upper()
+def ensure_quote_folder():
+    os.makedirs(QUOTE_FOLDER, exist_ok=True)
 
-    return parts[0][0].upper() + "X"
 
+# =====================================================
+# GOOGLE SHEETS CLIENT
+# =====================================================
+
+def get_google_client():
+    from modules.google_sheets import client
+    return client
+
+
+# =====================================================
+# AUTOMATIC QUOTE NUMBER FROM GOOGLE SHEETS
+# =====================================================
 
 def generate_quote_number(salesperson):
-    os.makedirs(QUOTE_FOLDER, exist_ok=True)
 
-    initials = salesperson_initials(salesperson)
-    today = datetime.now().strftime("%Y%m%d")
+    client = get_google_client()
 
-    existing = [
-        f for f in os.listdir(QUOTE_FOLDER)
-        if f.startswith(f"{initials}-{today}") and f.endswith(".json")
-    ]
+    spreadsheet = client.open(SPREADSHEET_NAME)
+    settings_sheet = spreadsheet.worksheet("Settings")
 
-    base_numbers = []
+    current_number_raw = settings_sheet.acell("B1").value
 
-    for file in existing:
-        clean = file.replace(".json", "")
-        clean = clean.split("-REV")[0]
+    try:
+        current_number = int(current_number_raw)
+    except Exception:
+        current_number = 1001
 
-        try:
-            number = int(clean.split("-")[-1])
-            base_numbers.append(number)
-        except:
-            pass
+    next_number = current_number + 1
 
-    next_number = max(base_numbers) + 1 if base_numbers else 1
+    settings_sheet.update(
+        "B1",
+        [[next_number]]
+    )
 
-    return f"{initials}-{today}-{next_number:02d}"
+    today = datetime.datetime.now()
+    year = today.strftime("%Y")
 
+    quote_number = f"Q{year}-{current_number}"
 
-def next_revision_number(base_quote_number):
-    os.makedirs(QUOTE_FOLDER, exist_ok=True)
-
-    base = base_quote_number.split("-REV")[0]
-
-    revisions = []
-
-    for file in os.listdir(QUOTE_FOLDER):
-        if file.startswith(base) and "-REV" in file:
-            try:
-                rev = int(file.replace(".json", "").split("-REV")[-1])
-                revisions.append(rev)
-            except:
-                pass
-
-    return max(revisions) + 1 if revisions else 1
+    return quote_number
 
 
-def calculate_totals(df):
+# =====================================================
+# CALCULATE TOTALS
+# =====================================================
+
+def calculate_totals(quote_df):
+
+    if quote_df is None or quote_df.empty:
+        return 0.0, 0.0, 0.0
+
+    df = quote_df.copy()
+
+    df["Qty"] = pd.to_numeric(
+        df["Qty"],
+        errors="coerce"
+    ).fillna(0)
+
+    df["Unit Price"] = pd.to_numeric(
+        df["Unit Price"],
+        errors="coerce"
+    ).fillna(0)
+
+    df["Discount"] = pd.to_numeric(
+        df["Discount"],
+        errors="coerce"
+    ).fillna(0)
+
+    df["Total"] = (
+        df["Qty"]
+        * df["Unit Price"]
+    )
+
     subtotal = float(df["Total"].sum())
     vat = subtotal * 0.15
     grand_total = subtotal + vat
 
     return subtotal, vat, grand_total
 
+
+# =====================================================
+# SAVE QUOTE LOCALLY AS JSON
+# =====================================================
 
 def save_quote_json(
     quote_number,
@@ -85,9 +115,10 @@ def save_quote_json(
     total,
     pdf_path
 ):
-    os.makedirs(QUOTE_FOLDER, exist_ok=True)
 
-    data = {
+    ensure_quote_folder()
+
+    quote_data = {
         "quote_number": quote_number,
         "customer_name": customer_name,
         "company_name": company_name,
@@ -101,29 +132,74 @@ def save_quote_json(
         "vat": vat,
         "total": total,
         "pdf_path": pdf_path,
-        "saved_at": datetime.now().isoformat()
+        "saved_at": datetime.datetime.now().isoformat()
     }
 
-    file_path = os.path.join(QUOTE_FOLDER, f"{quote_number}.json")
+    file_path = os.path.join(
+        QUOTE_FOLDER,
+        f"{quote_number}.json"
+    )
 
     with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4)
+        json.dump(
+            quote_data,
+            f,
+            indent=4,
+            ensure_ascii=False
+        )
 
+    return file_path
+
+
+# =====================================================
+# LOAD SAVED QUOTES
+# =====================================================
 
 def load_saved_quotes():
-    os.makedirs(QUOTE_FOLDER, exist_ok=True)
 
-    quotes = [
-        f.replace(".json", "")
-        for f in os.listdir(QUOTE_FOLDER)
+    ensure_quote_folder()
+
+    files = [
+        f for f in os.listdir(QUOTE_FOLDER)
         if f.endswith(".json")
     ]
 
-    return sorted(quotes, reverse=True)
+    files.sort(reverse=True)
+
+    return files
 
 
-def load_quote_json(quote_number):
-    file_path = os.path.join(QUOTE_FOLDER, f"{quote_number}.json")
+# =====================================================
+# LOAD SPECIFIC SAVED QUOTE
+# =====================================================
+
+def load_quote_json(filename):
+
+    ensure_quote_folder()
+
+    file_path = os.path.join(
+        QUOTE_FOLDER,
+        filename
+    )
 
     with open(file_path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+# =====================================================
+# REVISION NUMBER
+# =====================================================
+
+def next_revision_number(base_quote_number):
+
+    ensure_quote_folder()
+
+    files = [
+        f for f in os.listdir(QUOTE_FOLDER)
+        if f.startswith(base_quote_number)
+        and f.endswith(".json")
+    ]
+
+    revision_count = len(files)
+
+    return revision_count + 1
