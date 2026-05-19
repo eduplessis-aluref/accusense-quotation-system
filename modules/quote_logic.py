@@ -192,21 +192,26 @@ def save_quote_to_google_sheets(quote_data):
 
 
 def load_saved_quotes():
-    spreadsheet = get_spreadsheet()
-    register_sheet = spreadsheet.worksheet("QuoteRegister")
+    try:
+        spreadsheet = get_spreadsheet()
+        register_sheet = spreadsheet.worksheet("QuoteRegister")
 
-    rows = register_sheet.get_all_records()
+        rows = register_sheet.get_all_records()
 
-    quote_numbers = []
+        quote_numbers = []
 
-    for row in rows:
-        quote_number = str(row.get("Quote Number", "")).strip()
-        if quote_number:
-            quote_numbers.append(quote_number)
+        for row in rows:
+            quote_number = str(row.get("Quote Number", "")).strip()
+            if quote_number:
+                quote_numbers.append(quote_number)
 
-    quote_numbers = sorted(list(set(quote_numbers)), reverse=True)
+        quote_numbers = sorted(list(set(quote_numbers)), reverse=True)
 
-    return quote_numbers
+        return quote_numbers
+
+    except Exception as e:
+        print(f"Load saved quotes error: {e}")
+        return []
 
 
 def load_quote_json(quote_number):
