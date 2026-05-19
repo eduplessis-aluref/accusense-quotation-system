@@ -20,13 +20,28 @@ st.title("📄 AccuSense Quotation System")
 os.makedirs("output/PDFs", exist_ok=True)
 os.makedirs("output/Quotes", exist_ok=True)
 
+
 @st.cache_data(ttl=300)
 def get_cached_products():
     return load_products()
 
+
 @st.cache_data(ttl=300)
 def get_cached_terms():
     return load_terms()
+
+
+if "quote_items" not in st.session_state:
+    st.session_state.quote_items = []
+
+if "loaded_quote_number" not in st.session_state:
+    st.session_state.loaded_quote_number = ""
+
+if "last_pdf_path" not in st.session_state:
+    st.session_state.last_pdf_path = ""
+
+if "last_quote_number" not in st.session_state:
+    st.session_state.last_quote_number = ""
 
 if st.sidebar.button("Refresh Google Sheet Data"):
     st.cache_data.clear()
@@ -36,9 +51,7 @@ try:
     products_df = get_cached_products()
     terms = get_cached_terms()
 except Exception as e:
-
     import traceback
-
     st.error(str(e))
     st.code(traceback.format_exc())
     st.stop()
@@ -85,16 +98,6 @@ products_df["Selling Price"] = pd.to_numeric(
     errors="coerce"
 ).fillna(0)
 
-if "quote_items" not in st.session_state:
-    st.session_state.quote_items = []
-
-if "loaded_quote_number" not in st.session_state:
-    st.session_state.loaded_quote_number = ""
-
-# -------------------------------------------------
-# LOAD / REVISE EXISTING QUOTE
-# -------------------------------------------------
-
 st.sidebar.header("Quote Options")
 
 saved_quotes = load_saved_quotes()
@@ -119,11 +122,10 @@ if saved_quotes:
         st.session_state.salesperson_phone = quote_data.get("salesperson_phone", "")
         st.session_state.salesperson_email = quote_data.get("salesperson_email", "")
 
-        st.success("Quote loaded")
+        st.session_state.last_pdf_path = ""
+        st.session_state.last_quote_number = ""
 
-# -------------------------------------------------
-# CUSTOMER DETAILS
-# -------------------------------------------------
+        st.success("Quote loaded")
 
 st.sidebar.header("Customer Details")
 
@@ -147,10 +149,6 @@ customer_email = st.sidebar.text_input(
     value=st.session_state.get("customer_email", "")
 )
 
-# -------------------------------------------------
-# SALESPERSON DETAILS
-# -------------------------------------------------
-
 st.sidebar.header("Salesperson Details")
 
 salesperson = st.sidebar.text_input(
@@ -168,10 +166,6 @@ salesperson_email = st.sidebar.text_input(
     value=st.session_state.get("salesperson_email", "")
 )
 
-# -------------------------------------------------
-# QUOTE NUMBER
-# -------------------------------------------------
-
 if st.session_state.loaded_quote_number:
     revision = next_revision_number(st.session_state.loaded_quote_number)
     quote_number = f"{st.session_state.loaded_quote_number}-REV{revision}"
@@ -180,10 +174,6 @@ else:
 
 st.sidebar.write("### Quote Number")
 st.sidebar.write(quote_number)
-
-# -------------------------------------------------
-# PRODUCT SELECTION
-# -------------------------------------------------
 
 st.header("Add Products")
 
@@ -265,11 +255,10 @@ if st.button("Add To Quote"):
         "Total": line_total
     })
 
-    st.success("Product added")
+    st.session_state.last_pdf_path = ""
+    st.session_state.last_quote_number = ""
 
-# -------------------------------------------------
-# QUOTE SUMMARY
-# -------------------------------------------------
+    st.success("Product added")
 
 st.header("Quote Summary")
 
@@ -349,10 +338,6 @@ if st.session_state.quote_items:
     with col3:
         st.metric("Grand Total", f"R {grand_total:,.2f}")
 
-    # -------------------------------------------------
-    # GENERATE / SAVE PDF
-    # -------------------------------------------------
-
     if st.button("Generate / Save PDF"):
 
         try:
@@ -371,6 +356,9 @@ if st.session_state.quote_items:
                 total=grand_total,
                 terms=terms
             )
+
+            st.session_state.last_pdf_path = pdf_path
+            st.session_state.last_quote_number = quote_number
 
             save_quote_json(
                 quote_number=quote_number,
@@ -399,31 +387,81 @@ if st.session_state.quote_items:
                 )
 
         except Exception as e:
-            st.error(f"PDF generation error: {e}")
+            import traceback
+            st.error(str(e))
+            st.code(traceback.format_exc())
 
-    # -------------------------------------------------
-    # EMAIL PDF
-    # -------------------------------------------------
+    if st.session_state.last_pdf_path and os.path.exists(st.session_state.last_pdf_path):
+        st.info(f"Last generated PDF: {st.session_state.last_quote_number}")
+
+        with open(st.session_state.last_pdf_path, "rb") as f:
+            st.download_button(
+                "⬇ Download Last Generated PDF",
+                f,
+                file_name=f"{st.session_state.last_quote_number}.pdf",
+                mime="application/pdf"
+            )
 
     if st.button("Email Quote To Customer"):
 
-        pdf_path = f"output/PDFs/{quote_number}.pdf"
+        try:
+            pdf_path = st.session_state.get("last_pdf_path", "")
 
-        if not os.path.exists(pdf_path):
-            st.error("Please generate/save the PDF first.")
-        elif customer_email.strip() == "":
-            st.error("Please enter customer email address.")
-        else:
-            success = send_email(
-                recipient=customer_email,
-                pdf_path=pdf_path,
-                quote_number=quote_number
-            )
+            if not pdf_path or not os.path.exists(pdf_path):
 
-            if success:
-                st.success("Quote emailed successfully")
+                pdf_path = generate_pdf(
+                    quote_number=quote_number,
+                    customer=customer_name,
+                    company=company_name,
+                    site=site_name,
+                    customer_email=customer_email,
+                    salesperson=salesperson,
+                    salesperson_phone=salesperson_phone,
+                    salesperson_email=salesperson_email,
+                    quote_df=edited_df,
+                    subtotal=subtotal,
+                    vat=vat,
+                    total=grand_total,
+                    terms=terms
+                )
+
+                st.session_state.last_pdf_path = pdf_path
+                st.session_state.last_quote_number = quote_number
+
+                save_quote_json(
+                    quote_number=quote_number,
+                    customer_name=customer_name,
+                    company_name=company_name,
+                    site_name=site_name,
+                    customer_email=customer_email,
+                    salesperson=salesperson,
+                    salesperson_phone=salesperson_phone,
+                    salesperson_email=salesperson_email,
+                    items=edited_df.to_dict("records"),
+                    subtotal=subtotal,
+                    vat=vat,
+                    total=grand_total,
+                    pdf_path=pdf_path
+                )
+
+            if customer_email.strip() == "":
+                st.error("Please enter customer email address.")
             else:
-                st.error("Email failed. Check email settings in emailer.py")
+                success = send_email(
+                    recipient=customer_email,
+                    pdf_path=pdf_path,
+                    quote_number=quote_number
+                )
+
+                if success:
+                    st.success("Quote emailed successfully")
+                else:
+                    st.error("Email failed. Check email settings in emailer.py")
+
+        except Exception as e:
+            import traceback
+            st.error(str(e))
+            st.code(traceback.format_exc())
 
 else:
     st.info("No products added yet.")
