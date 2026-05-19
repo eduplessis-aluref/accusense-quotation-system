@@ -36,7 +36,10 @@ try:
     products_df = get_cached_products()
     terms = get_cached_terms()
 except Exception as e:
-    st.error(f"Error loading data: {e}")
+    import traceback
+
+st.error(str(e))
+st.code(traceback.format_exc())
     st.stop()
 
 if products_df.empty:
