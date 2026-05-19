@@ -1,4 +1,5 @@
 import os
+import json
 import streamlit as st
 import gspread
 import pandas as pd
@@ -13,6 +14,19 @@ scope = [
 
 
 def get_credentials():
+
+    if "gcp_service_account_json" in st.secrets:
+
+        service_account_info = json.loads(
+            st.secrets["gcp_service_account_json"]
+        )
+
+        creds = Credentials.from_service_account_info(
+            service_account_info,
+            scopes=scope
+        )
+
+        return creds
 
     if "gcp_service_account" in st.secrets:
 
@@ -37,7 +51,7 @@ def get_credentials():
         return creds
 
     st.error(
-        "Google credentials not found. Add them in Streamlit Cloud under App settings → Secrets."
+        "Google credentials not found. Add credentials in Streamlit Cloud secrets."
     )
 
     st.stop()
