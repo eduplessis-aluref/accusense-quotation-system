@@ -1,7 +1,9 @@
+import streamlit as st
 import gspread
 import pandas as pd
 
 from google.oauth2.service_account import Credentials
+
 
 # =====================================================
 # GOOGLE SHEETS CONNECTION
@@ -12,12 +14,32 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = Credentials.from_service_account_file(
-    "credentials.json",
-    scopes=scope
-)
 
+def get_credentials():
+
+    try:
+        service_account_info = dict(st.secrets["gcp_service_account"])
+
+        creds = Credentials.from_service_account_info(
+            service_account_info,
+            scopes=scope
+        )
+
+        return creds
+
+    except Exception:
+
+        creds = Credentials.from_service_account_file(
+            "credentials.json",
+            scopes=scope
+        )
+
+        return creds
+
+
+creds = get_credentials()
 client = gspread.authorize(creds)
+
 
 # =====================================================
 # LOAD PRODUCTS
@@ -26,32 +48,18 @@ client = gspread.authorize(creds)
 def load_products():
 
     sheet = client.open(
-        "Quotation Database"
+        "AccuSense Quote Database"
     ).worksheet("Products")
 
     data = sheet.get_all_values()
 
-    # =================================================
-    # HEADERS
-    # =================================================
+    if not data:
+        return pd.DataFrame()
 
-    raw_headers = data[0]
-
-    headers = []
-
-    for i, h in enumerate(raw_headers):
-
-        h = str(h).strip()
-
-        if h == "":
-
-            h = f"Column_{i}"
-
-        if h in headers:
-
-            h = f"{h}_{i}"
-
-        headers.append(h)
+    headers = [
+        str(h).strip()
+        for h in data[0]
+    ]
 
     rows = data[1:]
 
@@ -60,114 +68,24 @@ def load_products():
         columns=headers
     )
 
-    # =================================================
-    # FIND DESCRIPTION COLUMN
-    # =================================================
+    df = df.dropna(how="all")
 
-    description_column = None
-
-    possible_description_columns = [
-
-        "Description",
-        "description",
-        "Item Description",
-        "Product Description",
-        "Details"
-    ]
-
-    for col in possible_description_columns:
-
-        if col in df.columns:
-
-            description_column = col
-
-            break
-
-    if description_column is None:
-
-        description_column = df.columns[0]
-
-    df["Description"] = df[
-        description_column
-    ]
-
-    # =================================================
-    # FIND SHORT NAME
-    # =================================================
-
-    if "Short Name" not in df.columns:
-
-        df["Short Name"] = df["Description"]
-
-    # =================================================
-    # FIND SELLING PRICE
-    # =================================================
-
-    price_column = None
-
-    possible_price_columns = [
-
-        "Selling Price",
-        "Selling price",
-        "Price",
-        "Selling",
-        "Sell Price"
-    ]
-
-    for col in possible_price_columns:
-
-        if col in df.columns:
-
-            price_column = col
-
-            break
-
-    if price_column is None:
-
-        df["Selling Price"] = 0
-
-    else:
-
+    if "Selling Price" in df.columns:
         df["Selling Price"] = (
-
-            df[price_column]
-
+            df["Selling Price"]
             .astype(str)
-
-            .str.replace(",", "")
-
-            .str.replace("R", "")
-
+            .str.replace(",", "", regex=False)
+            .str.replace("R", "", regex=False)
             .str.strip()
         )
 
         df["Selling Price"] = pd.to_numeric(
-
             df["Selling Price"],
-
             errors="coerce"
-
         ).fillna(0)
 
-    # =================================================
-    # BILLING COLUMN
-    # =================================================
-
-    if "Billing" not in df.columns:
-
-        df["Billing"] = "Once-Off"
-
-    # =================================================
-    # REMOVE EMPTY ROWS
-    # =================================================
-
-    df = df[
-        df["Description"]
-        .astype(str)
-        .str.strip() != ""
-    ]
-
     return df
+
 
 # =====================================================
 # LOAD TERMS
@@ -176,9 +94,8 @@ def load_products():
 def load_terms():
 
     try:
-
         sheet = client.open(
-            "Quotation Database"
+            "AccuSense Quote Database"
         ).worksheet("Terms")
 
         data = sheet.get_all_values()
@@ -197,16 +114,17 @@ def load_terms():
 
         return terms
 
-    except:
+    except Exception:
 
         return """
-        • Prices exclude VAT unless stated otherwise.<br/>
-        • Quotation valid for 30 days.<br/>
-        • Delivery subject to stock availability.<br/>
+        • Prices exclude VAT<br/>
+        • Valid for 30 days<br/>
+        • Delivery subject to stock availability<br/>
         """
 
+
 # =====================================================
-# SAVE QUOTE
+# SAVE QUOTE TO GOOGLE SHEET
 # =====================================================
 
 def save_quote(
@@ -221,53 +139,26 @@ def save_quote(
 ):
 
     try:
-
         spreadsheet = client.open(
-            "Quotation Database"
+            "AccuSense Quote Database"
         )
 
         quotes_sheet = spreadsheet.worksheet(
-            "Quotes"
-        )
-
-        items_sheet = spreadsheet.worksheet(
-            "QuoteItems"
+            "QuoteRegister"
         )
 
         quotes_sheet.append_row([
-
             quote_number,
-
             customer,
-
             company,
-
             salesperson,
-
             subtotal,
-
             vat,
-
             total
         ])
 
-        for _, row in quote_df.iterrows():
-
-            items_sheet.append_row([
-
-                quote_number,
-
-                row["Product"],
-
-                row["Qty"],
-
-                row["Discount"],
-
-                row["Unit Price"],
-
-                row["Total"]
-            ])
+        return True
 
     except Exception as e:
-
-        print(f"Save error: {e}")
+        print(f"Save quote error: {e}")
+        return False
