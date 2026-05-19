@@ -204,7 +204,7 @@ def generate_pdf(
 
     elements = []
 
-    logo_path = "logo.png"
+    logo_path = "Logo.png"
 
     if os.path.exists(logo_path):
         try:
