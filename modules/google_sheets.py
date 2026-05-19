@@ -1,13 +1,10 @@
+import os
 import streamlit as st
 import gspread
 import pandas as pd
 
 from google.oauth2.service_account import Credentials
 
-
-# =====================================================
-# GOOGLE SHEETS CONNECTION
-# =====================================================
 
 scope = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -17,8 +14,11 @@ scope = [
 
 def get_credentials():
 
-    try:
-        service_account_info = dict(st.secrets["gcp_service_account"])
+    if "gcp_service_account" in st.secrets:
+
+        service_account_info = dict(
+            st.secrets["gcp_service_account"]
+        )
 
         creds = Credentials.from_service_account_info(
             service_account_info,
@@ -27,7 +27,7 @@ def get_credentials():
 
         return creds
 
-    except Exception:
+    if os.path.exists("credentials.json"):
 
         creds = Credentials.from_service_account_file(
             "credentials.json",
@@ -36,14 +36,16 @@ def get_credentials():
 
         return creds
 
+    st.error(
+        "Google credentials not found. Add them in Streamlit Cloud under App settings → Secrets."
+    )
+
+    st.stop()
+
 
 creds = get_credentials()
 client = gspread.authorize(creds)
 
-
-# =====================================================
-# LOAD PRODUCTS
-# =====================================================
 
 def load_products():
 
@@ -87,10 +89,6 @@ def load_products():
     return df
 
 
-# =====================================================
-# LOAD TERMS
-# =====================================================
-
 def load_terms():
 
     try:
@@ -122,10 +120,6 @@ def load_terms():
         • Delivery subject to stock availability<br/>
         """
 
-
-# =====================================================
-# SAVE QUOTE TO GOOGLE SHEET
-# =====================================================
 
 def save_quote(
     quote_number,
