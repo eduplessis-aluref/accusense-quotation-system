@@ -3,11 +3,9 @@ import streamlit as st
 import pandas as pd
 
 from modules.ui import render_header
-from modules.google_sheets import (
-    load_products,
-    load_terms,
-    load_
-)
+from modules.auth import require_login, logout_button
+import modules.google_sheets as gs
+
 from modules.quote_logic import (
     generate_quote_number,
     generate_revision_quote_number,
@@ -16,6 +14,7 @@ from modules.quote_logic import (
     load_saved_quotes,
     load_quote_json,
 )
+
 from modules.pdf_generator import generate_pdf
 
 
@@ -24,110 +23,37 @@ st.set_page_config(
     layout="wide"
 )
 
+current_user = require_login()
+
 render_header()
 
-col_refresh_1, col_refresh_2 = st.columns([1, 6])
+st.sidebar.success(f"Logged in as: {current_user.get('Name', '')}")
+logout_button()
 
-with col_refresh_1:
-    if st.button("🔄 Refresh Data"):
-        st.cache_data.clear()
-        st.success("Google Sheet data refreshed")
-        st.rerun()
-        
-st.markdown("""
-<style>
+st.sidebar.divider()
 
-[data-testid="stSidebar"] {
-    background-color: #F5F7FA;
-}
+if st.sidebar.button("🔄 Refresh Google Sheets", use_container_width=True):
+    st.cache_data.clear()
+    st.sidebar.success("Google Sheet data refreshed")
+    st.rerun()
 
-[data-testid="stSidebarNav"] {
-    padding-top: 18px;
-}
-
-[data-testid="stSidebarNav"] a {
-    background: white !important;
-    border: 2px solid #D9E2EC !important;
-    border-radius: 12px !important;
-    margin-bottom: 12px !important;
-    padding: 14px 16px !important;
-    font-size: 17px !important;
-    font-weight: 800 !important;
-    color: #0B4F9C !important;
-    box-shadow: 0px 2px 8px rgba(0,0,0,0.08);
-    transition: 0.15s ease-in-out;
-}
-
-[data-testid="stSidebarNav"] a:hover {
-    background: #EEF5FF !important;
-    border-color: #0B4F9C !important;
-    transform: translateX(3px);
-}
-
-[data-testid="stSidebarNav"] a[aria-current="page"] {
-    background: #E9EEF5 !important;
-    color: #0B4F9C !important;
-    border-color: #C9D4E2 !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-
-/* Sidebar page navigation buttons */
-[data-testid="stSidebarNav"] {
-    background-color: #F7F9FC;
-    padding-top: 10px;
-}
-
-/* Navigation links */
-[data-testid="stSidebarNav"] a {
-    background-color: white;
-    border-radius: 10px;
-    margin-bottom: 8px;
-    padding: 10px 14px;
-    border: 1px solid #DCE3EC;
-    font-weight: 700 !important;
-    font-size: 16px !important;
-    color: #0B4F9C !important;
-    transition: 0.15s ease-in-out;
-}
-
-/* Hover effect */
-[data-testid="stSidebarNav"] a:hover {
-    background-color: #EEF5FF;
-    border-color: #0B4F9C;
-    transform: translateX(2px);
-}
-
-/* Active page */
-[data-testid="stSidebarNav"] a[aria-current="page"] {
-    background-color: #0B4F9C;
-    color: white !important;
-    border-color: #0B4F9C;
-}
-
-</style>
-""", unsafe_allow_html=True)
 
 os.makedirs("output/PDFs", exist_ok=True)
 
 
 @st.cache_data(ttl=300)
 def get_cached_products():
-    return load_products()
+    return gs.load_products()
 
 
 @st.cache_data(ttl=300)
 def get_cached_terms():
-    return load_terms()
+    return gs.load_terms()
 
 
 @st.cache_data(ttl=300)
 def get_cached_templates():
-    return load_()
+    return gs.load_solution_templates()
 
 
 if "quote_items" not in st.session_state:
@@ -384,7 +310,7 @@ salesperson = st.sidebar.text_input(
     "Salesperson Name",
     value=st.session_state.get(
         "salesperson",
-        "Eddie du Plessis"
+        current_user.get("Name", "")
     )
 )
 
@@ -392,7 +318,7 @@ salesperson_phone = st.sidebar.text_input(
     "Salesperson Phone",
     value=st.session_state.get(
         "salesperson_phone",
-        ""
+        current_user.get("Phone", "")
     )
 )
 
@@ -400,7 +326,7 @@ salesperson_email = st.sidebar.text_input(
     "Salesperson Email",
     value=st.session_state.get(
         "salesperson_email",
-        ""
+        current_user.get("Email", "")
     )
 )
 
@@ -658,7 +584,6 @@ if st.session_state.quote_items:
             "Grand Total",
             f"R {grand_total:,.2f}"
         )
-
 
     if st.button("Generate / Save PDF"):
 
