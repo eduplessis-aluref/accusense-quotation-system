@@ -6,13 +6,8 @@ st.set_page_config(
     layout="wide"
 )
 
-QUOTE_PAGE_URL = "/1_Create_Quote"
-
 st.markdown("""
 <style>
-.main {
-    background-color: #f5f7fa;
-}
 .dashboard-title {
     font-size: 26px;
     font-weight: 700;
@@ -28,7 +23,7 @@ st.markdown("""
     background-color: white;
     box-shadow: 0px 2px 10px rgba(0,0,0,0.08);
     text-align: center;
-    min-height: 140px;
+    min-height: 120px;
 }
 .card-title {
     font-size: 20px;
@@ -71,7 +66,9 @@ with col1:
         <div class='card-text'>Start a new customer quotation</div>
     </div>
     """, unsafe_allow_html=True)
-    st.markdown(f"[📄 Open Quote System]({QUOTE_PAGE_URL})")
+
+    if st.button("📄 Open Quote System", use_container_width=True):
+        st.switch_page("pages/1_Create_Quote.py")
 
 with col2:
     st.markdown("""
@@ -80,7 +77,9 @@ with col2:
         <div class='card-text'>Recall previous quotations and create revisions</div>
     </div>
     """, unsafe_allow_html=True)
-    st.markdown(f"[🔁 Open Revisions]({QUOTE_PAGE_URL})")
+
+    if st.button("🔁 Open Revisions", use_container_width=True):
+        st.switch_page("pages/1_Create_Quote.py")
 
 with col3:
     st.markdown("""
@@ -89,9 +88,11 @@ with col3:
         <div class='card-text'>View quote history in Google Sheets</div>
     </div>
     """, unsafe_allow_html=True)
+
     st.link_button(
-        "Open Google Sheet",
-        "https://docs.google.com/spreadsheets/"
+        "📊 Open Google Sheet",
+        "https://docs.google.com/spreadsheets/",
+        use_container_width=True
     )
 
 st.divider()
