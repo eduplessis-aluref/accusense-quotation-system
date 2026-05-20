@@ -48,21 +48,23 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-col_logo, col_title = st.columns([3, 3])
+st.image("Logo.png", width=360)
 
-with col_logo:
-    st.image("Logo.png", width=450)
+st.markdown(
+    "<div class='big-title'>AccuSense Quotation System</div>",
+    unsafe_allow_html=True
+)
 
-with col_title:
-    st.markdown(
-        "<div class='big-title'>AccuSense Quotation System</div>",
-        unsafe_allow_html=True
+st.markdown(
+    "<div class='sub-title'>Industrial Monitoring & Predictive Solutions</div>",
+    unsafe_allow_html=True
+)
+
+st.write(
+    datetime.datetime.now().strftime(
+        "%A, %d %B %Y"
     )
-    st.markdown(
-        "<div class='sub-title'>Industrial Monitoring & Predictive Solutions</div>",
-        unsafe_allow_html=True
-    )
-    st.write(datetime.datetime.now().strftime("%A, %d %B %Y"))
+)
 
 st.divider()
 
