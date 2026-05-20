@@ -11,12 +11,15 @@ current_user = {
     "Email": "",
     "Phone": "",
     "Role": "Admin"
+}
 
 GOOGLE_SHEET_URL = "PASTE_YOUR_FULL_GOOGLE_SHEET_URL_HERE"
 
 render_header()
 
 st.sidebar.success(f"Logged in as: {current_user.get('Name', '')}")
+
+# logout_button()
 
 st.sidebar.divider()
 
