@@ -57,9 +57,9 @@ st.markdown("""
 }
 
 [data-testid="stSidebarNav"] a[aria-current="page"] {
-    background: #0B4F9C !important;
-    color: white !important;
-    border-color: #0B4F9C !important;
+    background: #E9EEF5 !important;
+    color: #0B4F9C !important;
+    border-color: #C9D4E2 !important;
 }
 
 </style>
