@@ -146,20 +146,10 @@ st.divider()
 # SOLUTION TEMPLATE SECTION
 # =====================================================
 
-st.markdown("""
-<div class="template-panel">
-
-    <div class="template-title">
-        AccuSense Solution Templates
-    </div>
-
-    <div class="template-text">
-        Select a solution below. The default products
-        will load directly into the quote.
-    </div>
-
-</div>
-""", unsafe_allow_html=True)
+st.markdown("### AccuSense Solution Templates")
+st.info(
+    "Select a solution below. The default products will load directly into the quote."
+)
 
 solution_templates = {
 
