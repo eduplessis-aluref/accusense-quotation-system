@@ -29,6 +29,45 @@ render_header()
 st.markdown("""
 <style>
 
+[data-testid="stSidebar"] {
+    background-color: #F5F7FA;
+}
+
+[data-testid="stSidebarNav"] {
+    padding-top: 18px;
+}
+
+[data-testid="stSidebarNav"] a {
+    background: white !important;
+    border: 2px solid #D9E2EC !important;
+    border-radius: 12px !important;
+    margin-bottom: 12px !important;
+    padding: 14px 16px !important;
+    font-size: 17px !important;
+    font-weight: 800 !important;
+    color: #0B4F9C !important;
+    box-shadow: 0px 2px 8px rgba(0,0,0,0.08);
+    transition: 0.15s ease-in-out;
+}
+
+[data-testid="stSidebarNav"] a:hover {
+    background: #EEF5FF !important;
+    border-color: #0B4F9C !important;
+    transform: translateX(3px);
+}
+
+[data-testid="stSidebarNav"] a[aria-current="page"] {
+    background: #0B4F9C !important;
+    color: white !important;
+    border-color: #0B4F9C !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+
 /* Sidebar page navigation buttons */
 [data-testid="stSidebarNav"] {
     background-color: #F7F9FC;
