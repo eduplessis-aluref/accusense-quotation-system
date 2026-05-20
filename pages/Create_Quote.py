@@ -26,12 +26,47 @@ st.set_page_config(
 
 render_header()
 
+st.markdown("""
+<style>
+
+/* Sidebar page navigation buttons */
+[data-testid="stSidebarNav"] {
+    background-color: #F7F9FC;
+    padding-top: 10px;
+}
+
+/* Navigation links */
+[data-testid="stSidebarNav"] a {
+    background-color: white;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    padding: 10px 14px;
+    border: 1px solid #DCE3EC;
+    font-weight: 700 !important;
+    font-size: 16px !important;
+    color: #0B4F9C !important;
+    transition: 0.15s ease-in-out;
+}
+
+/* Hover effect */
+[data-testid="stSidebarNav"] a:hover {
+    background-color: #EEF5FF;
+    border-color: #0B4F9C;
+    transform: translateX(2px);
+}
+
+/* Active page */
+[data-testid="stSidebarNav"] a[aria-current="page"] {
+    background-color: #0B4F9C;
+    color: white !important;
+    border-color: #0B4F9C;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 os.makedirs("output/PDFs", exist_ok=True)
 
-
-# =====================================================
-# CACHED GOOGLE SHEET DATA
-# =====================================================
 
 @st.cache_data(ttl=300)
 def get_cached_products():
@@ -48,10 +83,6 @@ def get_cached_templates():
     return load_solution_templates()
 
 
-# =====================================================
-# SESSION STATE
-# =====================================================
-
 if "quote_items" not in st.session_state:
     st.session_state.quote_items = []
 
@@ -67,10 +98,6 @@ if "revision_mode" not in st.session_state:
 if "dashboard_template_loaded" not in st.session_state:
     st.session_state.dashboard_template_loaded = False
 
-
-# =====================================================
-# LOAD DATA
-# =====================================================
 
 try:
     products_df = get_cached_products()
@@ -153,10 +180,6 @@ products_df["Selling Price"] = pd.to_numeric(
 ).fillna(0)
 
 
-# =====================================================
-# HELPER: LOAD TEMPLATE INTO QUOTE
-# =====================================================
-
 def load_template_into_quote(template_name):
 
     if templates_df.empty:
@@ -203,7 +226,6 @@ def load_template_into_quote(template_name):
             continue
 
         product = matched_products.iloc[0]
-
         unit_price = float(product["Selling Price"])
 
         line_total = (
@@ -237,22 +259,12 @@ def load_template_into_quote(template_name):
         )
 
 
-# =====================================================
-# AUTO LOAD TEMPLATE FROM DASHBOARD URL
-# =====================================================
-
 query_template = st.query_params.get("template", "")
 
 if query_template and not st.session_state.dashboard_template_loaded:
-
     load_template_into_quote(query_template)
-
     st.session_state.dashboard_template_loaded = True
 
-
-# =====================================================
-# SIDEBAR: LOAD / REVISE QUOTES
-# =====================================================
 
 st.sidebar.header("Quote Options")
 
@@ -276,7 +288,9 @@ if st.sidebar.button("Load Quote"):
 
     if selected_saved_quote:
 
-        quote_data = load_quote_json(selected_saved_quote)
+        quote_data = load_quote_json(
+            selected_saved_quote
+        )
 
         st.session_state.quote_items = quote_data["items"]
 
@@ -299,10 +313,6 @@ if st.sidebar.button("Load Quote"):
         )
 
 
-# =====================================================
-# CUSTOMER DETAILS
-# =====================================================
-
 st.sidebar.header("Customer Details")
 
 customer_name = st.sidebar.text_input(
@@ -320,10 +330,6 @@ site_name = st.sidebar.text_input(
     value=st.session_state.get("site_name", "")
 )
 
-
-# =====================================================
-# SALESPERSON DETAILS
-# =====================================================
 
 st.sidebar.header("Salesperson Details")
 
@@ -352,18 +358,11 @@ salesperson_email = st.sidebar.text_input(
 )
 
 
-# =====================================================
-# QUOTE NUMBER
-# =====================================================
-
 if st.session_state.revision_mode:
-
     quote_number, revision = generate_revision_quote_number(
         st.session_state.base_quote_number
     )
-
 else:
-
     quote_number = generate_quote_number(
         salesperson
     )
@@ -372,10 +371,6 @@ else:
 st.sidebar.write("### Quote Number")
 st.sidebar.success(quote_number)
 
-
-# =====================================================
-# SOLUTION TEMPLATE LOADING
-# =====================================================
 
 st.header("Load Solution Template")
 
@@ -394,7 +389,6 @@ if not templates_df.empty:
     )
 
     if st.button("Load Template Into Quote") and selected_template:
-
         load_template_into_quote(selected_template)
 
 else:
@@ -402,10 +396,6 @@ else:
         "No solution templates found. Add a SolutionTemplates tab in Google Sheets."
     )
 
-
-# =====================================================
-# MANUAL PRODUCT SELECTION
-# =====================================================
 
 st.header("Add Products Manually")
 
@@ -501,10 +491,6 @@ if st.button("Add To Quote"):
     st.success("Product added")
 
 
-# =====================================================
-# QUOTE SUMMARY
-# =====================================================
-
 st.header("Quote Summary")
 
 if st.session_state.quote_items:
@@ -513,33 +499,58 @@ if st.session_state.quote_items:
         st.session_state.quote_items
     )
 
+    st.markdown("""
+    <style>
+    [data-testid="stDataFrame"] table {
+        font-size: 13px;
+    }
+
+    [data-testid="stDataFrame"] table td:nth-child(8),
+    [data-testid="stDataFrame"] table td:nth-child(9),
+    [data-testid="stDataFrame"] table th:nth-child(8),
+    [data-testid="stDataFrame"] table th:nth-child(9) {
+        text-align: right !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     edited_df = st.data_editor(
         quote_df,
         use_container_width=True,
         num_rows="dynamic",
         column_config={
+
             "Qty": st.column_config.NumberColumn(
                 "Qty",
                 min_value=1,
-                step=1
+                step=1,
+                width="small"
             ),
+
             "Discount": st.column_config.NumberColumn(
                 "Discount %",
                 min_value=0.0,
                 max_value=100.0,
-                step=0.5
+                step=0.5,
+                width="small",
+                format="%.1f %%"
             ),
+
             "Unit Price": st.column_config.NumberColumn(
                 "Unit Price",
                 min_value=0.0,
                 step=0.01,
-                format="R %.2f"
+                format="R %.2f",
+                width="medium"
             ),
+
             "Total": st.column_config.NumberColumn(
                 "Total",
                 disabled=True,
-                format="R %.2f"
+                format="R %.2f",
+                width="medium"
             ),
+
         },
         disabled=[
             "Identification",
@@ -601,10 +612,6 @@ if st.session_state.quote_items:
             f"R {grand_total:,.2f}"
         )
 
-
-    # =================================================
-    # GENERATE / SAVE PDF
-    # =================================================
 
     if st.button("Generate / Save PDF"):
 
