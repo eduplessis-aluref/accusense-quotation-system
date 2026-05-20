@@ -8,6 +8,7 @@ st.set_page_config(
 )
 
 QUOTE_PAGE = "./Create_Quote"
+
 GOOGLE_SHEET_URL = "PASTE_YOUR_FULL_GOOGLE_SHEET_URL_HERE"
 
 render_header()
@@ -15,10 +16,6 @@ render_header()
 st.markdown(
     """
     <style>
-    .card-link {
-        text-decoration: none !important;
-    }
-
     .action-card {
         background: white;
         padding: 24px;
@@ -28,15 +25,6 @@ st.markdown(
         min-height: 145px;
         border: 1px solid #E6EAF0;
         margin-bottom: 18px;
-        transition: 0.15s ease-in-out;
-        cursor: pointer;
-    }
-
-    .action-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0px 5px 16px rgba(0,0,0,0.16);
-        border-color: #0B4F9C;
-        background-color: #F7FAFF;
     }
 
     .action-title {
@@ -52,108 +40,133 @@ st.markdown(
         line-height: 1.4;
     }
 
-    .click-hint {
-        margin-top: 14px;
-        font-size: 13px;
-        font-weight: 600;
-        color: #6CB33F;
+    .template-panel {
+        background: white;
+        padding: 28px;
+        border-radius: 18px;
+        box-shadow: 0px 2px 12px rgba(0,0,0,0.08);
+        border: 1px solid #E6EAF0;
+        margin-top: 10px;
+    }
+
+    .template-title {
+        font-size: 22px;
+        font-weight: 700;
+        color: #0B4F9C;
+        margin-bottom: 8px;
+    }
+
+    .template-text {
+        font-size: 14px;
+        color: #444444;
+        margin-bottom: 18px;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-def clickable_card(title, text, link, hint="Click to open"):
-    st.markdown(
-        f"""
-        <a class="card-link" href="{link}">
-            <div class="action-card">
-                <div class="action-title">{title}</div>
-                <div class="action-text">{text}</div>
-                <div class="click-hint">{hint}</div>
-            </div>
-        </a>
-        """,
-        unsafe_allow_html=True
-    )
-
+# =====================================================
+# QUICK ACTIONS
+# =====================================================
 
 st.subheader("Quick Actions")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    clickable_card(
-        "📄 Create New Quote",
-        "Start a blank customer quotation.",
+    st.markdown(
+        """
+        <div class="action-card">
+            <div class="action-title">📄 Create Blank Quote</div>
+            <div class="action-text">Start a new quotation without a template.</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.link_button(
+        "Open Blank Quote",
         QUOTE_PAGE,
-        "Open Quote System"
+        use_container_width=True
     )
 
 with col2:
-    clickable_card(
-        "🔁 Load / Revise Quote",
-        "Recall previous quotations and create revisions.",
+    st.markdown(
+        """
+        <div class="action-card">
+            <div class="action-title">🔁 Load / Revise Quote</div>
+            <div class="action-text">Recall previous quotations and create revisions.</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.link_button(
+        "Open Revisions",
         QUOTE_PAGE,
-        "Open Revisions"
+        use_container_width=True
     )
 
 with col3:
-    clickable_card(
-        "📊 Quote Register",
-        "Open quote history in Google Sheets.",
+    st.markdown(
+        """
+        <div class="action-card">
+            <div class="action-title">📊 Quote Register</div>
+            <div class="action-text">Open quote history in Google Sheets.</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.link_button(
+        "Open Quote Register",
         GOOGLE_SHEET_URL,
-        "Open Google Sheet"
+        use_container_width=True
     )
 
 st.divider()
 
-st.subheader("AccuSense Solution Templates")
+# =====================================================
+# SOLUTION TEMPLATE SELECTOR
+# =====================================================
 
-solution_cards = [
-    {
-        "title": "⛽ Diesel Monitoring",
-        "text": "Entry-level diesel tank monitoring solution.",
-        "template": "Diesel Monitoring Entry Level",
-    },
-    {
-        "title": "🔥 Hot Metal Ladle Monitoring",
-        "text": "Early warning hot metal burn-through prevention.",
-        "template": "Hot Metal Ladle Monitoring Entry Level",
-    },
-    {
-        "title": "⛏️ Coal Stockpile Monitoring",
-        "text": "Temperature and CO₂ monitoring for spontaneous combustion risk.",
-        "template": "Coal Stockpile Monitoring Entry Level",
-    },
-    {
-        "title": "🌡️ Bearing Temperature Monitoring",
-        "text": "Wireless bearing temperature monitoring for downtime prevention.",
-        "template": "Bearing Monitoring Entry Level",
-    },
-    {
-        "title": "⚡ Energy Monitoring",
-        "text": "Wireless electricity consumption monitoring.",
-        "template": "Energy Monitoring Entry Level",
-    },
-    {
-        "title": "💧 Reservoir / Silo Level",
-        "text": "Wireless level monitoring for tanks, reservoirs and silos.",
-        "template": "Reservoir Level Monitoring Entry Level",
-    },
-]
+st.markdown(
+    """
+    <div class="template-panel">
+        <div class="template-title">AccuSense Solution Templates</div>
+        <div class="template-text">
+        Select a solution below. The default products will load directly into the quote.
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-for row_start in range(0, len(solution_cards), 3):
-    cols = st.columns(3)
+solution_templates = {
+    "Diesel Monitoring - Entry Level": "Diesel Monitoring Entry Level",
+    "Hot Metal Ladle Monitoring - Entry Level": "Hot Metal Ladle Monitoring Entry Level",
+    "Coal Stockpile Monitoring - Entry Level": "Coal Stockpile Monitoring Entry Level",
+    "Bearing Temperature Monitoring - Entry Level": "Bearing Monitoring Entry Level",
+    "Energy Monitoring - Entry Level": "Energy Monitoring Entry Level",
+    "Reservoir / Silo Level Monitoring - Entry Level": "Reservoir Level Monitoring Entry Level",
+}
 
-    for idx, card in enumerate(solution_cards[row_start:row_start + 3]):
-        template_encoded = urllib.parse.quote(card["template"])
-        template_link = f"{QUOTE_PAGE}?template={template_encoded}"
+selected_solution_label = st.selectbox(
+    "Select Solution Template",
+    [""] + list(solution_templates.keys())
+)
 
-        with cols[idx]:
-            clickable_card(
-                card["title"],
-                card["text"],
-                template_link,
-                "Use Template"
-            )
+if selected_solution_label:
+    selected_template = solution_templates[selected_solution_label]
+
+    template_encoded = urllib.parse.quote(selected_template)
+    quote_link = f"{QUOTE_PAGE}?template={template_encoded}"
+
+    st.link_button(
+        "Create Quote From Selected Template",
+        quote_link,
+        use_container_width=True
+    )
+else:
+    st.info("Select a solution template to create a pre-loaded quote.")
