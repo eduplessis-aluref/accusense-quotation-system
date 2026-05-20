@@ -6,6 +6,8 @@ st.set_page_config(
     layout="wide"
 )
 
+QUOTE_PAGE_URL = "/1_Create_Quote"
+
 st.markdown("""
 <style>
 .main {
@@ -26,6 +28,7 @@ st.markdown("""
     background-color: white;
     box-shadow: 0px 2px 10px rgba(0,0,0,0.08);
     text-align: center;
+    min-height: 140px;
 }
 .card-title {
     font-size: 20px;
@@ -45,8 +48,14 @@ with col_logo:
     st.image("Logo.png", width=180)
 
 with col_title:
-    st.markdown("<div class='dashboard-title'>AccuSense Quotation System</div>", unsafe_allow_html=True)
-    st.markdown("<div class='dashboard-subtitle'>Industrial Monitoring & Predictive Solutions</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div class='dashboard-title'>AccuSense Quotation System</div>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        "<div class='dashboard-subtitle'>Industrial Monitoring & Predictive Solutions</div>",
+        unsafe_allow_html=True
+    )
     st.write(datetime.datetime.now().strftime("%A, %d %B %Y"))
 
 st.divider()
@@ -62,7 +71,7 @@ with col1:
         <div class='card-text'>Start a new customer quotation</div>
     </div>
     """, unsafe_allow_html=True)
-    st.page_link("pages/1_Create_Quote.py", label="Open Quote System", icon="📄")
+    st.markdown(f"[📄 Open Quote System]({QUOTE_PAGE_URL})")
 
 with col2:
     st.markdown("""
@@ -71,7 +80,7 @@ with col2:
         <div class='card-text'>Recall previous quotations and create revisions</div>
     </div>
     """, unsafe_allow_html=True)
-    st.page_link("pages/1_Create_Quote.py", label="Open Revisions", icon="🔁")
+    st.markdown(f"[🔁 Open Revisions]({QUOTE_PAGE_URL})")
 
 with col3:
     st.markdown("""
