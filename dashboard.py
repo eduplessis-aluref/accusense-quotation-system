@@ -21,11 +21,13 @@ def get_cached_templates():
 
 st.markdown("""
 <style>
+
+/* Quick action cards */
 .action-card {
     background: white;
     padding: 24px;
     border-radius: 16px;
-    box-shadow: 0px 2px 10px rgba(0,0,0,0.08);
+    box-shadow: 0px 3px 12px rgba(0,0,0,0.10);
     text-align: center;
     min-height: 145px;
     border: 1px solid #E6EAF0;
@@ -44,6 +46,31 @@ st.markdown("""
     color: #444444;
     line-height: 1.4;
 }
+
+/* All Streamlit link buttons */
+.stLinkButton > a {
+    background-color: #EEF2F6 !important;
+    color: #0B4F9C !important;
+    border: 1px solid #D6DEE8 !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+    box-shadow: 0px 3px 10px rgba(0,0,0,0.10) !important;
+    transition: 0.15s ease-in-out !important;
+}
+
+.stLinkButton > a:hover {
+    background-color: #E3E9F0 !important;
+    border-color: #0B4F9C !important;
+    color: #0B4F9C !important;
+    transform: translateY(-2px);
+}
+
+/* Button spacing */
+.stLinkButton {
+    margin-bottom: 12px;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -117,7 +144,9 @@ if not templates_df.empty:
 
         cols = st.columns(cols_per_row)
 
-        for idx, template_name in enumerate(template_names[row_start:row_start + cols_per_row]):
+        for idx, template_name in enumerate(
+            template_names[row_start:row_start + cols_per_row]
+        ):
 
             with cols[idx]:
 
