@@ -1,6 +1,7 @@
 import urllib.parse
 import streamlit as st
 from modules.ui import render_header
+from modules.google_sheets import load_solution_templates
 
 st.set_page_config(
     page_title="AccuSense Dashboard",
@@ -12,6 +13,10 @@ QUOTE_PAGE = "./Create_Quote"
 GOOGLE_SHEET_URL = "PASTE_YOUR_FULL_GOOGLE_SHEET_URL_HERE"
 
 render_header()
+
+@st.cache_data(ttl=300)
+def get_cached_templates():
+    return load_solution_templates()
 
 # =====================================================
 # DASHBOARD PAGE CSS
@@ -151,25 +156,48 @@ st.info(
     "Select a solution below. The default products will load directly into the quote."
 )
 
-solution_templates = {
+templates_df = get_cached_templates()
 
-    "Diesel Monitoring - Entry Level":
-        "Diesel Monitoring Entry Level",
+if not templates_df.empty:
 
-    "Hot Metal Ladle Monitoring - Entry Level":
-        "Hot Metal Ladle Monitoring Entry Level",
+    template_names = sorted(
+        templates_df["Template Name"]
+        .dropna()
+        .astype(str)
+        .str.strip()
+        .unique()
+    )
 
-    "Coal Stockpile Monitoring - Entry Level":
-        "Coal Stockpile Monitoring Entry Level",
+    selected_solution_label = st.selectbox(
+        "Select Solution Template",
+        [""] + template_names
+    )
 
-    "Bearing Temperature Monitoring - Entry Level":
-        "Bearing Monitoring Entry Level",
+    if selected_solution_label:
 
-    "Energy Monitoring - Entry Level":
-        "Energy Monitoring Entry Level",
+        template_encoded = urllib.parse.quote(
+            selected_solution_label
+        )
 
-    "Reservoir / Silo Level Monitoring - Entry Level":
-        "Reservoir Level Monitoring Entry Level",
+        quote_link = (
+            f"{QUOTE_PAGE}?template={template_encoded}"
+        )
+
+        st.link_button(
+            "Create Quote From Selected Template",
+            quote_link,
+            use_container_width=True
+        )
+
+    else:
+        st.info(
+            "Select a solution template to create a pre-loaded quote."
+        )
+
+else:
+    st.warning(
+        "No solution templates found in Google Sheets."
+    )
 }
 
 selected_solution_label = st.selectbox(
