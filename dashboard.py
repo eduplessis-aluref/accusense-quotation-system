@@ -1,4 +1,3 @@
-import urllib.parse
 import streamlit as st
 
 from modules.ui import render_header
@@ -16,13 +15,10 @@ current_user = {
 }
 
 GOOGLE_SHEET_URL = "PASTE_YOUR_FULL_GOOGLE_SHEET_URL_HERE"
-QUOTE_PAGE = "./Create_Quote"
 
 render_header()
 
 st.sidebar.success(f"Logged in as: {current_user.get('Name', '')}")
-
-# logout_button()
 
 st.sidebar.divider()
 
@@ -39,11 +35,6 @@ def get_cached_templates():
 
 st.markdown("""
 <style>
-
-.card-link {
-    text-decoration: none !important;
-}
-
 .action-card {
     background: #EEF2F6;
     padding: 28px;
@@ -52,16 +43,7 @@ st.markdown("""
     text-align: center;
     min-height: 145px;
     border: 1px solid #D6DEE8;
-    margin-bottom: 18px;
-    transition: 0.15s ease-in-out;
-    cursor: pointer;
-}
-
-.action-card:hover {
-    background: #E3E9F0;
-    border-color: #0B4F9C;
-    transform: translateY(-2px);
-    box-shadow: 0px 5px 16px rgba(0,0,0,0.16);
+    margin-bottom: 10px;
 }
 
 .action-title {
@@ -77,27 +59,34 @@ st.markdown("""
     line-height: 1.4;
 }
 
-.click-hint {
-    margin-top: 16px;
-    font-size: 13px;
-    font-weight: 800;
-    color: #0B4F9C;
+.stButton > button,
+.stLinkButton > a {
+    background-color: #EEF2F6 !important;
+    color: #0B4F9C !important;
+    border: 1px solid #D6DEE8 !important;
+    border-radius: 12px !important;
+    font-weight: 800 !important;
+    font-size: 15px !important;
+    box-shadow: 0px 3px 10px rgba(0,0,0,0.10) !important;
 }
 
+.stButton > button:hover,
+.stLinkButton > a:hover {
+    background-color: #E3E9F0 !important;
+    border-color: #0B4F9C !important;
+    color: #0B4F9C !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
 
-def clickable_card(title, text, link, hint):
+def dashboard_card(title, text):
     st.markdown(
         f"""
-        <a class="card-link" href="{link}">
-            <div class="action-card">
-                <div class="action-title">{title}</div>
-                <div class="action-text">{text}</div>
-                <div class="click-hint">{hint}</div>
-            </div>
-        </a>
+        <div class="action-card">
+            <div class="action-title">{title}</div>
+            <div class="action-text">{text}</div>
+        </div>
         """,
         unsafe_allow_html=True
     )
@@ -108,27 +97,43 @@ st.subheader("Quick Actions")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    clickable_card(
+    dashboard_card(
         "📄 Create Blank Quote",
-        "Start a new quotation without a template.",
-        QUOTE_PAGE,
-        "Open Blank Quote"
+        "Start a new quotation without a template."
     )
+
+    if st.button(
+        "Open Blank Quote",
+        key="open_blank_quote",
+        use_container_width=True
+    ):
+        st.session_state.selected_template_from_dashboard = ""
+        st.switch_page("pages/Create_Quote.py")
 
 with col2:
-    clickable_card(
+    dashboard_card(
         "🔁 Load / Revise Quote",
-        "Recall previous quotations and create revisions.",
-        QUOTE_PAGE,
-        "Open Revisions"
+        "Recall previous quotations and create revisions."
     )
 
+    if st.button(
+        "Open Revisions",
+        key="open_revisions",
+        use_container_width=True
+    ):
+        st.session_state.selected_template_from_dashboard = ""
+        st.switch_page("pages/Create_Quote.py")
+
 with col3:
-    clickable_card(
+    dashboard_card(
         "📊 Quote Register",
-        "Open quote history in Google Sheets.",
+        "Open quote history in Google Sheets."
+    )
+
+    st.link_button(
+        "Open Quote Register",
         GOOGLE_SHEET_URL,
-        "Open Quote Register"
+        use_container_width=True
     )
 
 st.divider()
@@ -162,18 +167,18 @@ if not templates_df.empty:
 
             with cols[idx]:
 
-                template_encoded = urllib.parse.quote(template_name)
-
-                quote_link = (
-                    f"{QUOTE_PAGE}?template={template_encoded}"
-                )
-
-                clickable_card(
+                dashboard_card(
                     template_name,
-                    "Create quote from this solution template.",
-                    quote_link,
-                    "Use Template"
+                    "Create quote from this solution template."
                 )
+
+                if st.button(
+                    "Use Template",
+                    key=f"template_{template_name}",
+                    use_container_width=True
+                ):
+                    st.session_state.selected_template_from_dashboard = template_name
+                    st.switch_page("pages/Create_Quote.py")
 
 else:
     st.warning("No solution templates found in Google Sheets.")
