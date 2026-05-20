@@ -1,7 +1,7 @@
 import urllib.parse
 import streamlit as st
 from modules.ui import render_header
-from modules.google_sheets import load_solution_templates
+from modules.google_sheets import load_
 
 st.set_page_config(
     page_title="AccuSense Dashboard",
@@ -16,7 +16,7 @@ render_header()
 
 @st.cache_data(ttl=300)
 def get_cached_templates():
-    return load_solution_templates()
+    return load_()
 
 # =====================================================
 # DASHBOARD PAGE CSS
@@ -202,12 +202,12 @@ else:
 
 selected_solution_label = st.selectbox(
     "Select Solution Template",
-    [""] + list(solution_templates.keys())
+    [""] + list(.keys())
 )
 
 if selected_solution_label:
 
-    selected_template = solution_templates[
+    selected_template = [
         selected_solution_label
     ]
 
