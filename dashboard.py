@@ -48,7 +48,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-col_logo, col_title = st.columns([1, 4])
+col_logo, col_title = st.columns([3, 3])
 
 with col_logo:
     st.image("Logo.png", width=450)
