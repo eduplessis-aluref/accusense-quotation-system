@@ -15,32 +15,22 @@ render_header()
 st.markdown(
     """
     <style>
-    .action-link {
-        text-decoration: none !important;
-    }
-
     .action-card {
         background: white;
-        padding: 26px;
+        padding: 22px;
         border-radius: 16px;
         box-shadow: 0px 2px 10px rgba(0,0,0,0.08);
         text-align: center;
-        min-height: 145px;
+        min-height: 120px;
         border: 1px solid #E6EAF0;
-        transition: 0.15s ease-in-out;
-    }
-
-    .action-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0px 4px 14px rgba(0,0,0,0.14);
-        border-color: #0B4F9C;
+        margin-bottom: 8px;
     }
 
     .action-title {
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 700;
         color: #0B4F9C;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
     }
 
     .action-text {
@@ -52,63 +42,131 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# =====================================================
+# QUICK ACTIONS
+# =====================================================
+
 st.subheader("Quick Actions")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.markdown(
-        f"""
-        <a class="action-link" href="{QUOTE_PAGE}">
-            <div class="action-card">
-                <div class="action-title">📄 Create New Quote</div>
-                <div class="action-text">Start a new customer quotation</div>
-            </div>
-        </a>
+        """
+        <div class="action-card">
+            <div class="action-title">📄 Create New Quote</div>
+            <div class="action-text">Start a blank quotation</div>
+        </div>
         """,
         unsafe_allow_html=True
     )
+
+    if st.button("Open Quote System", use_container_width=True):
+        st.query_params["template"] = ""
+        st.switch_page("pages/Create_Quote.py")
 
 with col2:
     st.markdown(
-        f"""
-        <a class="action-link" href="{QUOTE_PAGE}">
-            <div class="action-card">
-                <div class="action-title">🔁 Load / Revise Quote</div>
-                <div class="action-text">Recall previous quotations and create revisions</div>
-            </div>
-        </a>
+        """
+        <div class="action-card">
+            <div class="action-title">🔁 Load / Revise Quote</div>
+            <div class="action-text">Recall previous quotations and create revisions</div>
+        </div>
         """,
         unsafe_allow_html=True
     )
 
+    if st.button("Open Revisions", use_container_width=True):
+        st.switch_page("pages/Create_Quote.py")
+
 with col3:
     st.markdown(
-        f"""
-        <a class="action-link" href="{GOOGLE_SHEET_URL}" target="_blank">
-            <div class="action-card">
-                <div class="action-title">📊 Quote Register</div>
-                <div class="action-text">Open quote history in Google Sheets</div>
-            </div>
-        </a>
+        """
+        <div class="action-card">
+            <div class="action-title">📊 Quote Register</div>
+            <div class="action-text">Open quote history in Google Sheets</div>
+        </div>
         """,
         unsafe_allow_html=True
+    )
+
+    st.link_button(
+        "Open Quote Register",
+        GOOGLE_SHEET_URL,
+        use_container_width=True
     )
 
 st.divider()
 
-st.subheader("AccuSense Solutions")
+# =====================================================
+# SOLUTION TEMPLATE BUTTONS
+# =====================================================
 
-col1, col2, col3 = st.columns(3)
+st.subheader("AccuSense Solution Templates")
 
-with col1:
-    st.info("🔥 Hot metal ladle monitoring")
-    st.info("🌡️ Bearing temperature monitoring")
+solution_cards = [
+    {
+        "title": "⛽ Diesel Monitoring",
+        "text": "Entry-level diesel tank monitoring solution",
+        "template": "Diesel Monitoring Entry Level",
+        "button": "Use Diesel Template"
+    },
+    {
+        "title": "🔥 Hot Metal Ladle Monitoring",
+        "text": "Early warning hot metal burn-through prevention",
+        "template": "Hot Metal Ladle Monitoring Entry Level",
+        "button": "Use Ladle Template"
+    },
+    {
+        "title": "⛏️ Coal Stockpile Monitoring",
+        "text": "Temperature and CO₂ monitoring for spontaneous combustion risk",
+        "template": "Coal Stockpile Monitoring Entry Level",
+        "button": "Use Coal Template"
+    },
+    {
+        "title": "🌡️ Bearing Temperature Monitoring",
+        "text": "Wireless bearing temperature monitoring for downtime prevention",
+        "template": "Bearing Monitoring Entry Level",
+        "button": "Use Bearing Template"
+    },
+    {
+        "title": "⚡ Energy Monitoring",
+        "text": "Wireless electricity consumption monitoring",
+        "template": "Energy Monitoring Entry Level",
+        "button": "Use Energy Template"
+    },
+    {
+        "title": "💧 Reservoir / Silo Level",
+        "text": "Wireless level monitoring for tanks, reservoirs and silos",
+        "template": "Reservoir Level Monitoring Entry Level",
+        "button": "Use Level Template"
+    },
+]
 
-with col2:
-    st.info("⛏️ Coal stockpile temperature & CO₂ monitoring")
-    st.info("⚡ Wireless electricity consumption monitoring")
+for row_start in range(0, len(solution_cards), 3):
 
-with col3:
-    st.info("💧 Silo and reservoir level monitoring")
-    st.info("📡 LoRaWAN industrial sensor networks")
+    cols = st.columns(3)
+
+    for idx, card in enumerate(
+        solution_cards[row_start:row_start + 3]
+    ):
+
+        with cols[idx]:
+
+            st.markdown(
+                f"""
+                <div class="action-card">
+                    <div class="action-title">{card["title"]}</div>
+                    <div class="action-text">{card["text"]}</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+            if st.button(
+                card["button"],
+                key=f"template_{card['template']}",
+                use_container_width=True
+            ):
+                st.query_params["template"] = card["template"]
+                st.switch_page("pages/Create_Quote.py")
