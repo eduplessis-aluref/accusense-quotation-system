@@ -14,12 +14,12 @@ st.markdown("""
     background-color: #f5f7fa;
 }
 .dashboard-title {
-    font-size: 34px;
+    font-size: 26px;
     font-weight: 700;
     color: #0B4F9C;
 }
 .dashboard-subtitle {
-    font-size: 18px;
+    font-size: 14px;
     color: #4A4A4A;
 }
 .card {
@@ -45,7 +45,7 @@ st.markdown("""
 col_logo, col_title = st.columns([1, 4])
 
 with col_logo:
-    st.image("Logo.png", width=180)
+    st.image("Logo.png", width=260)
 
 with col_title:
     st.markdown(
