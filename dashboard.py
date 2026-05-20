@@ -1,17 +1,30 @@
 import urllib.parse
 import streamlit as st
+
 from modules.ui import render_header
 from modules.google_sheets import load_solution_templates
+from modules.auth import require_login, logout_button
 
-st.set_page_config(
-    page_title="AccuSense Dashboard",
-    layout="wide"
-)
+st.set_page_config(page_title="AccuSense Dashboard", layout="wide")
+
+current_user = require_login()
 
 QUOTE_PAGE = "./Create_Quote"
 GOOGLE_SHEET_URL = "PASTE_YOUR_FULL_GOOGLE_SHEET_URL_HERE"
 
 render_header()
+
+st.sidebar.success(f"Logged in as: {current_user.get('Name', '')}")
+logout_button()
+
+# Refresh button
+refresh_col, spacer_col = st.columns([1.4, 6])
+
+with refresh_col:
+    if st.button("🔄 Refresh Google Sheets", use_container_width=True):
+        st.cache_data.clear()
+        st.success("Google Sheet data refreshed")
+        st.rerun()
 
 
 @st.cache_data(ttl=300)
@@ -21,22 +34,33 @@ def get_cached_templates():
 
 st.markdown("""
 <style>
+.card-link {
+    text-decoration: none !important;
+}
 
-/* Quick action cards */
 .action-card {
-    background: white;
-    padding: 24px;
+    background: #EEF2F6;
+    padding: 28px;
     border-radius: 16px;
-    box-shadow: 0px 3px 12px rgba(0,0,0,0.10);
+    box-shadow: 0px 3px 12px rgba(0,0,0,0.12);
     text-align: center;
     min-height: 145px;
-    border: 1px solid #E6EAF0;
+    border: 1px solid #D6DEE8;
     margin-bottom: 18px;
+    transition: 0.15s ease-in-out;
+    cursor: pointer;
+}
+
+.action-card:hover {
+    background: #E3E9F0;
+    border-color: #0B4F9C;
+    transform: translateY(-2px);
+    box-shadow: 0px 5px 16px rgba(0,0,0,0.16);
 }
 
 .action-title {
     font-size: 19px;
-    font-weight: 700;
+    font-weight: 800;
     color: #0B4F9C;
     margin-bottom: 10px;
 }
@@ -47,32 +71,29 @@ st.markdown("""
     line-height: 1.4;
 }
 
-/* All Streamlit link buttons */
-.stLinkButton > a {
-    background-color: #EEF2F6 !important;
-    color: #0B4F9C !important;
-    border: 1px solid #D6DEE8 !important;
-    border-radius: 12px !important;
-    font-weight: 700 !important;
-    font-size: 15px !important;
-    box-shadow: 0px 3px 10px rgba(0,0,0,0.10) !important;
-    transition: 0.15s ease-in-out !important;
+.click-hint {
+    margin-top: 16px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #0B4F9C;
 }
-
-.stLinkButton > a:hover {
-    background-color: #E3E9F0 !important;
-    border-color: #0B4F9C !important;
-    color: #0B4F9C !important;
-    transform: translateY(-2px);
-}
-
-/* Button spacing */
-.stLinkButton {
-    margin-bottom: 12px;
-}
-
 </style>
 """, unsafe_allow_html=True)
+
+
+def clickable_card(title, text, link, hint):
+    st.markdown(
+        f"""
+        <a class="card-link" href="{link}">
+            <div class="action-card">
+                <div class="action-title">{title}</div>
+                <div class="action-text">{text}</div>
+                <div class="click-hint">{hint}</div>
+            </div>
+        </a>
+        """,
+        unsafe_allow_html=True
+    )
 
 
 st.subheader("Quick Actions")
@@ -80,45 +101,27 @@ st.subheader("Quick Actions")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.markdown("""
-    <div class="action-card">
-        <div class="action-title">📄 Create Blank Quote</div>
-        <div class="action-text">Start a new quotation without a template.</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.link_button(
-        "Open Blank Quote",
+    clickable_card(
+        "📄 Create Blank Quote",
+        "Start a new quotation without a template.",
         QUOTE_PAGE,
-        use_container_width=True
+        "Open Blank Quote"
     )
 
 with col2:
-    st.markdown("""
-    <div class="action-card">
-        <div class="action-title">🔁 Load / Revise Quote</div>
-        <div class="action-text">Recall previous quotations and create revisions.</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.link_button(
-        "Open Revisions",
+    clickable_card(
+        "🔁 Load / Revise Quote",
+        "Recall previous quotations and create revisions.",
         QUOTE_PAGE,
-        use_container_width=True
+        "Open Revisions"
     )
 
 with col3:
-    st.markdown("""
-    <div class="action-card">
-        <div class="action-title">📊 Quote Register</div>
-        <div class="action-text">Open quote history in Google Sheets.</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.link_button(
-        "Open Quote Register",
+    clickable_card(
+        "📊 Quote Register",
+        "Open quote history in Google Sheets.",
         GOOGLE_SHEET_URL,
-        use_container_width=True
+        "Open Quote Register"
     )
 
 st.divider()
@@ -141,22 +144,18 @@ if not templates_df.empty:
     cols_per_row = 3
 
     for row_start in range(0, len(template_names), cols_per_row):
-
         cols = st.columns(cols_per_row)
 
-        for idx, template_name in enumerate(
-            template_names[row_start:row_start + cols_per_row]
-        ):
-
+        for idx, template_name in enumerate(template_names[row_start:row_start + cols_per_row]):
             with cols[idx]:
-
                 template_encoded = urllib.parse.quote(template_name)
                 quote_link = f"{QUOTE_PAGE}?template={template_encoded}"
 
-                st.link_button(
+                clickable_card(
                     template_name,
+                    "Create quote from this solution template.",
                     quote_link,
-                    use_container_width=True
+                    "Use Template"
                 )
 
 else:
