@@ -117,7 +117,7 @@ with col3:
 
     st.link_button(
         "📊 Open Google Sheet",
-        "https://docs.google.com/spreadsheets/",
+        "https://docs.google.com/spreadsheets/d/16ch_vgWWpf_ZxD64aAWCMUd2TyPJhv-QcCai0m7l3pI/edit?gid=979178217#gid=979178217",
         use_container_width=True
     )
 
