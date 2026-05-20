@@ -233,10 +233,16 @@ def load_template_into_quote(template_name):
 
 
 query_template = st.query_params.get("template", "")
+session_template = st.session_state.get("selected_template_from_dashboard", "")
 
-if query_template and not st.session_state.dashboard_template_loaded:
-    load_template_into_quote(query_template)
+template_to_load = session_template or query_template
+
+if template_to_load and not st.session_state.dashboard_template_loaded:
+    load_template_into_quote(template_to_load)
     st.session_state.dashboard_template_loaded = True
+
+    if "selected_template_from_dashboard" in st.session_state:
+        del st.session_state.selected_template_from_dashboard
 
 
 st.sidebar.header("Quote Options")
