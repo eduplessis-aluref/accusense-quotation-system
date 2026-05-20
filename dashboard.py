@@ -1,3 +1,4 @@
+import urllib.parse
 import streamlit as st
 from modules.ui import render_header
 
@@ -7,7 +8,6 @@ st.set_page_config(
 )
 
 QUOTE_PAGE = "./Create_Quote"
-
 GOOGLE_SHEET_URL = "PASTE_YOUR_FULL_GOOGLE_SHEET_URL_HERE"
 
 render_header()
@@ -15,158 +15,145 @@ render_header()
 st.markdown(
     """
     <style>
+    .card-link {
+        text-decoration: none !important;
+    }
+
     .action-card {
         background: white;
-        padding: 22px;
+        padding: 24px;
         border-radius: 16px;
         box-shadow: 0px 2px 10px rgba(0,0,0,0.08);
         text-align: center;
-        min-height: 120px;
+        min-height: 145px;
         border: 1px solid #E6EAF0;
-        margin-bottom: 8px;
+        margin-bottom: 18px;
+        transition: 0.15s ease-in-out;
+        cursor: pointer;
+    }
+
+    .action-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0px 5px 16px rgba(0,0,0,0.16);
+        border-color: #0B4F9C;
+        background-color: #F7FAFF;
     }
 
     .action-title {
-        font-size: 18px;
+        font-size: 19px;
         font-weight: 700;
         color: #0B4F9C;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
     }
 
     .action-text {
         font-size: 14px;
         color: #444444;
+        line-height: 1.4;
+    }
+
+    .click-hint {
+        margin-top: 14px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #6CB33F;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# =====================================================
-# QUICK ACTIONS
-# =====================================================
+def clickable_card(title, text, link, hint="Click to open"):
+    st.markdown(
+        f"""
+        <a class="card-link" href="{link}">
+            <div class="action-card">
+                <div class="action-title">{title}</div>
+                <div class="action-text">{text}</div>
+                <div class="click-hint">{hint}</div>
+            </div>
+        </a>
+        """,
+        unsafe_allow_html=True
+    )
+
 
 st.subheader("Quick Actions")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.markdown(
-        """
-        <div class="action-card">
-            <div class="action-title">📄 Create New Quote</div>
-            <div class="action-text">Start a blank quotation</div>
-        </div>
-        """,
-        unsafe_allow_html=True
+    clickable_card(
+        "📄 Create New Quote",
+        "Start a blank customer quotation.",
+        QUOTE_PAGE,
+        "Open Quote System"
     )
-
-    if st.button("Open Quote System", use_container_width=True):
-        st.query_params["template"] = ""
-        st.switch_page("pages/Create_Quote.py")
 
 with col2:
-    st.markdown(
-        """
-        <div class="action-card">
-            <div class="action-title">🔁 Load / Revise Quote</div>
-            <div class="action-text">Recall previous quotations and create revisions</div>
-        </div>
-        """,
-        unsafe_allow_html=True
+    clickable_card(
+        "🔁 Load / Revise Quote",
+        "Recall previous quotations and create revisions.",
+        QUOTE_PAGE,
+        "Open Revisions"
     )
-
-    if st.button("Open Revisions", use_container_width=True):
-        st.switch_page("pages/Create_Quote.py")
 
 with col3:
-    st.markdown(
-        """
-        <div class="action-card">
-            <div class="action-title">📊 Quote Register</div>
-            <div class="action-text">Open quote history in Google Sheets</div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.link_button(
-        "Open Quote Register",
+    clickable_card(
+        "📊 Quote Register",
+        "Open quote history in Google Sheets.",
         GOOGLE_SHEET_URL,
-        use_container_width=True
+        "Open Google Sheet"
     )
 
 st.divider()
-
-# =====================================================
-# SOLUTION TEMPLATE BUTTONS
-# =====================================================
 
 st.subheader("AccuSense Solution Templates")
 
 solution_cards = [
     {
         "title": "⛽ Diesel Monitoring",
-        "text": "Entry-level diesel tank monitoring solution",
+        "text": "Entry-level diesel tank monitoring solution.",
         "template": "Diesel Monitoring Entry Level",
-        "button": "Use Diesel Template"
     },
     {
         "title": "🔥 Hot Metal Ladle Monitoring",
-        "text": "Early warning hot metal burn-through prevention",
+        "text": "Early warning hot metal burn-through prevention.",
         "template": "Hot Metal Ladle Monitoring Entry Level",
-        "button": "Use Ladle Template"
     },
     {
         "title": "⛏️ Coal Stockpile Monitoring",
-        "text": "Temperature and CO₂ monitoring for spontaneous combustion risk",
+        "text": "Temperature and CO₂ monitoring for spontaneous combustion risk.",
         "template": "Coal Stockpile Monitoring Entry Level",
-        "button": "Use Coal Template"
     },
     {
         "title": "🌡️ Bearing Temperature Monitoring",
-        "text": "Wireless bearing temperature monitoring for downtime prevention",
+        "text": "Wireless bearing temperature monitoring for downtime prevention.",
         "template": "Bearing Monitoring Entry Level",
-        "button": "Use Bearing Template"
     },
     {
         "title": "⚡ Energy Monitoring",
-        "text": "Wireless electricity consumption monitoring",
+        "text": "Wireless electricity consumption monitoring.",
         "template": "Energy Monitoring Entry Level",
-        "button": "Use Energy Template"
     },
     {
         "title": "💧 Reservoir / Silo Level",
-        "text": "Wireless level monitoring for tanks, reservoirs and silos",
+        "text": "Wireless level monitoring for tanks, reservoirs and silos.",
         "template": "Reservoir Level Monitoring Entry Level",
-        "button": "Use Level Template"
     },
 ]
 
 for row_start in range(0, len(solution_cards), 3):
-
     cols = st.columns(3)
 
-    for idx, card in enumerate(
-        solution_cards[row_start:row_start + 3]
-    ):
+    for idx, card in enumerate(solution_cards[row_start:row_start + 3]):
+        template_encoded = urllib.parse.quote(card["template"])
+        template_link = f"{QUOTE_PAGE}?template={template_encoded}"
 
         with cols[idx]:
-
-            st.markdown(
-                f"""
-                <div class="action-card">
-                    <div class="action-title">{card["title"]}</div>
-                    <div class="action-text">{card["text"]}</div>
-                </div>
-                """,
-                unsafe_allow_html=True
+            clickable_card(
+                card["title"],
+                card["text"],
+                template_link,
+                "Use Template"
             )
-
-            if st.button(
-                card["button"],
-                key=f"template_{card['template']}",
-                use_container_width=True
-            ):
-                st.query_params["template"] = card["template"]
-                st.switch_page("pages/Create_Quote.py")
