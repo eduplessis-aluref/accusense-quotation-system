@@ -21,7 +21,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📄 AccuSense Quotation System")
+render_header()
 
 
 os.makedirs("output/PDFs", exist_ok=True)

@@ -1,5 +1,5 @@
-import datetime
 import streamlit as st
+from modules.ui import render_header
 
 st.set_page_config(
     page_title="AccuSense Dashboard",
@@ -8,32 +8,36 @@ st.set_page_config(
 
 QUOTE_PAGE = "./Create_Quote"
 
+GOOGLE_SHEET_URL = "PASTE_YOUR_FULL_GOOGLE_SHEET_URL_HERE"
+
+render_header()
+
 st.markdown(
     """
     <style>
-    .big-title {
-        font-size: 24px;
-        font-weight: 700;
-        color: #0B4F9C;
-    }
-
-    .sub-title {
-        font-size: 14px;
-        color: #555555;
+    .action-link {
+        text-decoration: none !important;
     }
 
     .action-card {
         background: white;
-        padding: 24px;
+        padding: 26px;
         border-radius: 16px;
         box-shadow: 0px 2px 10px rgba(0,0,0,0.08);
         text-align: center;
-        min-height: 130px;
-        margin-bottom: 12px;
+        min-height: 145px;
+        border: 1px solid #E6EAF0;
+        transition: 0.15s ease-in-out;
+    }
+
+    .action-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0px 4px 14px rgba(0,0,0,0.14);
+        border-color: #0B4F9C;
     }
 
     .action-title {
-        font-size: 19px;
+        font-size: 20px;
         font-weight: 700;
         color: #0B4F9C;
         margin-bottom: 10px;
@@ -48,79 +52,47 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.image("Logo.png", width=360)
-
-st.markdown(
-    "<div class='big-title'>AccuSense Quotation System</div>",
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    "<div class='sub-title'>Industrial Monitoring & Predictive Solutions</div>",
-    unsafe_allow_html=True
-)
-
-st.write(
-    datetime.datetime.now().strftime(
-        "%A, %d %B %Y"
-    )
-)
-
-st.divider()
-
 st.subheader("Quick Actions")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.markdown(
-        """
-        <div class="action-card">
-            <div class="action-title">Create New Quote</div>
-            <div class="action-text">Start a new customer quotation</div>
-        </div>
+        f"""
+        <a class="action-link" href="{QUOTE_PAGE}">
+            <div class="action-card">
+                <div class="action-title">📄 Create New Quote</div>
+                <div class="action-text">Start a new customer quotation</div>
+            </div>
+        </a>
         """,
         unsafe_allow_html=True
-    )
-
-    st.link_button(
-        "📄 Open Quote System",
-        QUOTE_PAGE,
-        use_container_width=True
     )
 
 with col2:
     st.markdown(
-        """
-        <div class="action-card">
-            <div class="action-title">Load / Revise Quote</div>
-            <div class="action-text">Recall previous quotations and create revisions</div>
-        </div>
+        f"""
+        <a class="action-link" href="{QUOTE_PAGE}">
+            <div class="action-card">
+                <div class="action-title">🔁 Load / Revise Quote</div>
+                <div class="action-text">Recall previous quotations and create revisions</div>
+            </div>
+        </a>
         """,
         unsafe_allow_html=True
-    )
-
-    st.link_button(
-        "🔁 Open Revisions",
-        QUOTE_PAGE,
-        use_container_width=True
     )
 
 with col3:
     st.markdown(
-        """
-        <div class="action-card">
-            <div class="action-title">Quote Register</div>
-            <div class="action-text">View quote history in Google Sheets</div>
-        </div>
+        f"""
+        <a class="action-link" href="{GOOGLE_SHEET_URL}" target="_blank">
+            <div class="action-card">
+                <div class="action-title">📊 Quote Register</div>
+                <div class="action-text">Open quote history in Google Sheets</div>
+            </div>
+        </a>
         """,
         unsafe_allow_html=True
-    )
-
-    st.link_button(
-        "📊 Open Google Sheet",
-        "https://docs.google.com/spreadsheets/d/16ch_vgWWpf_ZxD64aAWCMUd2TyPJhv-QcCai0m7l3pI/edit?gid=979178217#gid=979178217",
-        use_container_width=True
     )
 
 st.divider()
