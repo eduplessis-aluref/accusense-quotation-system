@@ -97,9 +97,7 @@ with col3:
 st.divider()
 
 st.markdown("### AccuSense Solution Templates")
-st.info(
-    "Select a solution below. The default products will load directly into the quote."
-)
+st.info("Select a solution below. The default products will load directly into the quote.")
 
 templates_df = get_cached_templates()
 
@@ -113,27 +111,24 @@ if not templates_df.empty:
         .unique()
     )
 
-    selected_solution_label = st.selectbox(
-        "Select Solution Template",
-        [""] + template_names
-    )
+    cols_per_row = 3
 
-    if selected_solution_label:
+    for row_start in range(0, len(template_names), cols_per_row):
 
-        template_encoded = urllib.parse.quote(
-            selected_solution_label
-        )
+        cols = st.columns(cols_per_row)
 
-        quote_link = f"{QUOTE_PAGE}?template={template_encoded}"
+        for idx, template_name in enumerate(template_names[row_start:row_start + cols_per_row]):
 
-        st.link_button(
-            "Create Quote From Selected Template",
-            quote_link,
-            use_container_width=True
-        )
+            with cols[idx]:
 
-    else:
-        st.info("Select a solution template to create a pre-loaded quote.")
+                template_encoded = urllib.parse.quote(template_name)
+                quote_link = f"{QUOTE_PAGE}?template={template_encoded}"
+
+                st.link_button(
+                    template_name,
+                    quote_link,
+                    use_container_width=True
+                )
 
 else:
     st.warning("No solution templates found in Google Sheets.")
