@@ -87,7 +87,7 @@ def load_terms():
         """
 
 
-def load_solution_templates():
+def load_():
     try:
         sheet = client.open(SPREADSHEET_NAME).worksheet("SolutionTemplates")
         data = sheet.get_all_values()
