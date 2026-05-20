@@ -67,8 +67,11 @@ with col1:
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("📄 Open Quote System", use_container_width=True):
-        st.switch_page("pages/1_Create_Quote.py")
+    st.page_link(
+        "pages/1_Create_Quote.py",
+        label="📄 Open Quote System",
+        use_container_width=True
+    )
 
 with col2:
     st.markdown("""
@@ -78,8 +81,11 @@ with col2:
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("🔁 Open Revisions", use_container_width=True):
-        st.switch_page("pages/1_Create_Quote.py")
+    st.page_link(
+        "pages/1_Create_Quote.py",
+        label="🔁 Open Revisions",
+        use_container_width=True
+    )
 
 with col3:
     st.markdown("""
