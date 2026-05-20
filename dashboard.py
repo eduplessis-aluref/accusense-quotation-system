@@ -17,14 +17,12 @@ render_header()
 st.sidebar.success(f"Logged in as: {current_user.get('Name', '')}")
 logout_button()
 
-# Refresh button
-refresh_col, spacer_col = st.columns([1.4, 6])
+st.sidebar.divider()
 
-with refresh_col:
-    if st.button("🔄 Refresh Google Sheets", use_container_width=True):
-        st.cache_data.clear()
-        st.success("Google Sheet data refreshed")
-        st.rerun()
+if st.sidebar.button("🔄 Refresh Google Sheets", use_container_width=True):
+    st.cache_data.clear()
+    st.sidebar.success("Google Sheet data refreshed")
+    st.rerun()
 
 
 @st.cache_data(ttl=300)
@@ -132,7 +130,6 @@ st.info("Select a solution below. The default products will load directly into t
 templates_df = get_cached_templates()
 
 if not templates_df.empty:
-
     template_names = sorted(
         templates_df["Template Name"]
         .dropna()
