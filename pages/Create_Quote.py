@@ -6,7 +6,7 @@ from modules.ui import render_header
 from modules.google_sheets import (
     load_products,
     load_terms,
-    load_solution_templates
+    load_
 )
 from modules.quote_logic import (
     generate_quote_number,
@@ -26,6 +26,14 @@ st.set_page_config(
 
 render_header()
 
+col_refresh_1, col_refresh_2 = st.columns([1, 6])
+
+with col_refresh_1:
+    if st.button("🔄 Refresh Data"):
+        st.cache_data.clear()
+        st.success("Google Sheet data refreshed")
+        st.rerun()
+        
 st.markdown("""
 <style>
 
@@ -119,7 +127,7 @@ def get_cached_terms():
 
 @st.cache_data(ttl=300)
 def get_cached_templates():
-    return load_solution_templates()
+    return load_()
 
 
 if "quote_items" not in st.session_state:
