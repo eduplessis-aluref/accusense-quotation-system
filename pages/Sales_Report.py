@@ -16,6 +16,9 @@ current_user = require_login()
 
 render_header()
 
+os.makedirs("output/PDFs", exist_ok=True)
+os.makedirs("output/Quotes", exist_ok=True)
+
 st.sidebar.success(f"Logged in as: {current_user.get('Name', '')}")
 logout_button()
 
@@ -27,7 +30,7 @@ if st.sidebar.button("🔄 Refresh Report Data", use_container_width=True):
     st.rerun()
 
 
-QUOTE_FOLDER = "output/quotes"
+QUOTE_FOLDER = "output/Quotes"
 
 
 @st.cache_data(ttl=300)

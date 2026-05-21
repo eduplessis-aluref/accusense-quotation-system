@@ -31,7 +31,7 @@ def generate_quote_number(salesperson=""):
     try:
         current_number = int(current_number_raw)
     except Exception:
-        current_number = 1001
+        current_number = 1
 
     next_number = current_number + 1
     settings_sheet.update("B1", [[next_number]])
@@ -75,7 +75,11 @@ def next_revision_number(base_quote_number):
 
 def generate_revision_quote_number(base_quote_number):
     revision_number = next_revision_number(base_quote_number)
-    return f"{base_quote_number}-REV{revision_number:02d}", f"REV{revision_number:02d}"
+
+    return (
+        f"{base_quote_number}-REV{revision_number:02d}",
+        f"REV{revision_number:02d}"
+    )
 
 
 def calculate_totals(quote_df):
@@ -187,7 +191,12 @@ def save_quote_to_google_sheets(quote_data):
             item.get("Qty", 0),
             item.get("Discount", 0),
             item.get("Unit Price", 0),
-            item.get("Total", 0)
+            item.get("Cost Price", 0),
+            item.get("Line Cost", 0),
+            item.get("Total", 0),
+            item.get("Profit", 0),
+            item.get("Profit Margin %", 0),
+            item.get("Template", "")
         ])
 
 
@@ -202,12 +211,11 @@ def load_saved_quotes():
 
         for row in rows:
             quote_number = str(row.get("Quote Number", "")).strip()
+
             if quote_number:
                 quote_numbers.append(quote_number)
 
-        quote_numbers = sorted(list(set(quote_numbers)), reverse=True)
-
-        return quote_numbers
+        return sorted(list(set(quote_numbers)), reverse=True)
 
     except Exception as e:
         print(f"Load saved quotes error: {e}")
@@ -245,7 +253,12 @@ def load_quote_json(quote_number):
                 "Qty": row.get("Qty", 1),
                 "Discount": row.get("Discount", 0),
                 "Unit Price": row.get("Unit Price", 0),
-                "Total": row.get("Total", 0)
+                "Cost Price": row.get("Cost Price", 0),
+                "Line Cost": row.get("Line Cost", 0),
+                "Total": row.get("Total", 0),
+                "Profit": row.get("Profit", 0),
+                "Profit Margin %": row.get("Profit Margin %", 0),
+                "Template": row.get("Template", "")
             })
 
     return {
