@@ -3,15 +3,13 @@ import streamlit as st
 
 from modules.ui import render_header
 from modules.google_sheets import load_solution_templates
+from modules.auth import require_login, logout_button
 
 st.set_page_config(page_title="AccuSense Dashboard", layout="wide")
 
-current_user = {
-    "Name": "Testing User",
-    "Email": "",
-    "Phone": "",
-    "Role": "Admin"
-}
+current_user = require_login()
+
+from modules.auth import require_login, logout_button
 
 QUOTE_PAGE = "./Create_Quote"
 GOOGLE_SHEET_URL = "PASTE_YOUR_FULL_GOOGLE_SHEET_URL_HERE"
@@ -19,6 +17,8 @@ GOOGLE_SHEET_URL = "PASTE_YOUR_FULL_GOOGLE_SHEET_URL_HERE"
 render_header()
 
 st.sidebar.success(f"Logged in as: {current_user.get('Name', '')}")
+
+logout_button()
 
 st.sidebar.divider()
 
