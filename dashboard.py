@@ -164,11 +164,12 @@ if not templates_df.empty:
                     f"{QUOTE_PAGE}?template={template_encoded}"
                 )
 
-                clickable_card(
-                    template_name,
-                    quote_link,
-                    "Use Template"
-                )
+            clickable_card(
+                template_name,
+                "Create quote from this solution template.",
+                quote_link,
+                "Use Template"
+)
 
 else:
     st.warning("No solution templates found in Google Sheets.")
