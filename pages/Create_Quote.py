@@ -94,7 +94,8 @@ required_columns = [
     "Short Name",
     "Description",
     "Selling Price",
-    "Billing"
+    "Billing",
+    "Final Cost before profit"
 ]
 
 missing_columns = [
@@ -114,10 +115,6 @@ products_df["Identification"] = (
     .fillna("General")
     .astype(str)
     .str.strip()
-)
-
-products_df["Identification"] = (
-    products_df["Identification"]
     .replace("", "General")
 )
 
@@ -151,6 +148,35 @@ products_df["Selling Price"] = pd.to_numeric(
     products_df["Selling Price"],
     errors="coerce"
 ).fillna(0)
+
+products_df["Final Cost before profit"] = (
+    products_df["Final Cost before profit"]
+    .astype(str)
+    .str.replace(",", "", regex=False)
+    .str.replace("R", "", regex=False)
+    .str.strip()
+)
+
+products_df["Final Cost before profit"] = pd.to_numeric(
+    products_df["Final Cost before profit"],
+    errors="coerce"
+).fillna(0)
+
+
+def calculate_line_values(product, qty, discount):
+    unit_price = float(product["Selling Price"])
+    cost_price = float(product["Final Cost before profit"])
+
+    line_total = qty * unit_price * (1 - discount / 100)
+    line_cost = qty * cost_price
+    profit = line_total - line_cost
+
+    if line_total > 0:
+        profit_margin = (profit / line_total) * 100
+    else:
+        profit_margin = 0
+
+    return unit_price, cost_price, line_total, line_cost, profit, profit_margin
 
 
 def load_template_into_quote(template_name):
@@ -199,12 +225,9 @@ def load_template_into_quote(template_name):
             continue
 
         product = matched_products.iloc[0]
-        unit_price = float(product["Selling Price"])
 
-        line_total = (
-            qty
-            * unit_price
-            * (1 - discount / 100)
+        unit_price, cost_price, line_total, line_cost, profit, profit_margin = (
+            calculate_line_values(product, qty, discount)
         )
 
         st.session_state.quote_items.append({
@@ -215,7 +238,11 @@ def load_template_into_quote(template_name):
             "Qty": qty,
             "Discount": discount,
             "Unit Price": unit_price,
+            "Cost Price": cost_price,
+            "Line Cost": line_cost,
             "Total": line_total,
+            "Profit": profit,
+            "Profit Margin %": profit_margin,
             "Locked": locked,
             "Template": template_name
         })
@@ -267,9 +294,7 @@ if st.sidebar.button("Load Quote"):
 
     if selected_saved_quote:
 
-        quote_data = load_quote_json(
-            selected_saved_quote
-        )
+        quote_data = load_quote_json(selected_saved_quote)
 
         st.session_state.quote_items = quote_data["items"]
 
@@ -287,9 +312,7 @@ if st.sidebar.button("Load Quote"):
 
         st.session_state.revision_mode = True
 
-        st.success(
-            f"Loaded quote: {selected_saved_quote}"
-        )
+        st.success(f"Loaded quote: {selected_saved_quote}")
 
 
 st.sidebar.header("Customer Details")
@@ -342,9 +365,7 @@ if st.session_state.revision_mode:
         st.session_state.base_quote_number
     )
 else:
-    quote_number = generate_quote_number(
-        salesperson
-    )
+    quote_number = generate_quote_number(salesperson)
 
 
 st.sidebar.write("### Quote Number")
@@ -435,9 +456,7 @@ with col2:
 
 with col3:
     st.write("Selling Price")
-    st.write(
-        f"R {float(selected['Selling Price']):,.2f}"
-    )
+    st.write(f"R {float(selected['Selling Price']):,.2f}")
 
 
 st.write("**Full Product Description:**")
@@ -446,12 +465,8 @@ st.write(selected["Description"])
 
 if st.button("Add To Quote"):
 
-    unit_price = float(selected["Selling Price"])
-
-    line_total = (
-        qty
-        * unit_price
-        * (1 - discount / 100)
+    unit_price, cost_price, line_total, line_cost, profit, profit_margin = (
+        calculate_line_values(selected, qty, discount)
     )
 
     st.session_state.quote_items.append({
@@ -462,7 +477,11 @@ if st.button("Add To Quote"):
         "Qty": qty,
         "Discount": discount,
         "Unit Price": unit_price,
+        "Cost Price": cost_price,
+        "Line Cost": line_cost,
         "Total": line_total,
+        "Profit": profit,
+        "Profit Margin %": profit_margin,
         "Locked": "No",
         "Template": ""
     })
@@ -474,24 +493,20 @@ st.header("Quote Summary")
 
 if st.session_state.quote_items:
 
-    quote_df = pd.DataFrame(
-        st.session_state.quote_items
-    )
+    quote_df = pd.DataFrame(st.session_state.quote_items)
 
-    st.markdown("""
-    <style>
-    [data-testid="stDataFrame"] table {
-        font-size: 13px;
-    }
+    required_quote_columns = [
+        "Cost Price",
+        "Line Cost",
+        "Profit",
+        "Profit Margin %",
+        "Template",
+        "Locked"
+    ]
 
-    [data-testid="stDataFrame"] table td:nth-child(8),
-    [data-testid="stDataFrame"] table td:nth-child(9),
-    [data-testid="stDataFrame"] table th:nth-child(8),
-    [data-testid="stDataFrame"] table th:nth-child(9) {
-        text-align: right !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    for col in required_quote_columns:
+        if col not in quote_df.columns:
+            quote_df[col] = 0 if col != "Template" and col != "Locked" else ""
 
     edited_df = st.data_editor(
         quote_df,
@@ -523,6 +538,20 @@ if st.session_state.quote_items:
                 width="medium"
             ),
 
+            "Cost Price": st.column_config.NumberColumn(
+                "Cost Price",
+                disabled=True,
+                format="R %.2f",
+                width="medium"
+            ),
+
+            "Line Cost": st.column_config.NumberColumn(
+                "Line Cost",
+                disabled=True,
+                format="R %.2f",
+                width="medium"
+            ),
+
             "Total": st.column_config.NumberColumn(
                 "Total",
                 disabled=True,
@@ -530,13 +559,30 @@ if st.session_state.quote_items:
                 width="medium"
             ),
 
+            "Profit": st.column_config.NumberColumn(
+                "Profit",
+                disabled=True,
+                format="R %.2f",
+                width="medium"
+            ),
+
+            "Profit Margin %": st.column_config.NumberColumn(
+                "Profit Margin %",
+                disabled=True,
+                format="%.1f %%",
+                width="medium"
+            ),
         },
         disabled=[
             "Identification",
             "Product",
             "Description",
             "Billing",
+            "Cost Price",
+            "Line Cost",
             "Total",
+            "Profit",
+            "Profit Margin %",
             "Locked",
             "Template"
         ]
@@ -557,43 +603,67 @@ if st.session_state.quote_items:
         errors="coerce"
     ).fillna(0)
 
+    edited_df["Cost Price"] = pd.to_numeric(
+        edited_df["Cost Price"],
+        errors="coerce"
+    ).fillna(0)
+
     edited_df["Total"] = (
         edited_df["Qty"]
         * edited_df["Unit Price"]
         * (1 - edited_df["Discount"] / 100)
     )
 
-    st.session_state.quote_items = (
-        edited_df.to_dict("records")
+    edited_df["Line Cost"] = (
+        edited_df["Qty"]
+        * edited_df["Cost Price"]
     )
 
-    subtotal, vat, grand_total = calculate_totals(
-        edited_df
+    edited_df["Profit"] = (
+        edited_df["Total"]
+        - edited_df["Line Cost"]
     )
 
-    col1, col2, col3 = st.columns(3)
+    edited_df["Profit Margin %"] = edited_df.apply(
+        lambda row: (row["Profit"] / row["Total"] * 100)
+        if row["Total"] > 0 else 0,
+        axis=1
+    )
+
+    st.session_state.quote_items = edited_df.to_dict("records")
+
+    subtotal, vat, grand_total = calculate_totals(edited_df)
+
+    gross_profit = float(edited_df["Profit"].sum())
+    total_cost = float(edited_df["Line Cost"].sum())
+
+    if subtotal > 0:
+        gross_margin = (gross_profit / subtotal) * 100
+    else:
+        gross_margin = 0
+
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.metric(
-            "Subtotal",
-            f"R {subtotal:,.2f}"
-        )
+        st.metric("Subtotal", f"R {subtotal:,.2f}")
 
     with col2:
-        st.metric(
-            "VAT",
-            f"R {vat:,.2f}"
-        )
+        st.metric("VAT", f"R {vat:,.2f}")
 
     with col3:
-        st.metric(
-            "Grand Total",
-            f"R {grand_total:,.2f}"
-        )
+        st.metric("Grand Total", f"R {grand_total:,.2f}")
+
+    with col4:
+        st.metric("Gross Profit", f"R {gross_profit:,.2f}")
+
+    st.caption(
+        f"Total Cost: R {total_cost:,.2f} | Gross Margin: {gross_margin:.1f}%"
+    )
 
     if st.button("Generate / Save PDF"):
 
         try:
+            st.info("Starting PDF generation...")
 
             pdf_path = generate_pdf(
                 quote_number=quote_number,
@@ -611,7 +681,9 @@ if st.session_state.quote_items:
                 terms=terms
             )
 
-            save_quote_json(
+            st.success(f"PDF generated successfully: {pdf_path}")
+
+            saved_json_path = save_quote_json(
                 quote_number=quote_number,
                 customer_name=customer_name,
                 company_name=company_name,
@@ -627,21 +699,29 @@ if st.session_state.quote_items:
                 pdf_path=pdf_path
             )
 
-            st.success("Quote saved successfully")
+            st.success(f"Quote JSON saved successfully: {saved_json_path}")
 
-            with open(pdf_path, "rb") as f:
+            st.write("PDF saved to:")
+            st.code(pdf_path)
 
-                st.download_button(
-                    "⬇ Download PDF",
-                    f,
-                    file_name=f"{quote_number}.pdf",
-                    mime="application/pdf"
-                )
+            st.write("Quote data saved to:")
+            st.code(saved_json_path)
+
+            if os.path.exists(pdf_path):
+                with open(pdf_path, "rb") as f:
+                    st.download_button(
+                        "⬇ Download PDF",
+                        f,
+                        file_name=f"{quote_number}.pdf",
+                        mime="application/pdf"
+                    )
+            else:
+                st.error("PDF file was not found after generation.")
 
         except Exception as e:
-
             import traceback
 
+            st.error("Quote save failed.")
             st.error(str(e))
             st.code(traceback.format_exc())
 
