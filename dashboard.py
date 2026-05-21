@@ -131,7 +131,7 @@ st.divider()
 
 st.markdown("### AccuSense Solution Templates")
 st.info(
-    "Select a solution below. The default products will load directly into the quote."
+    "Create a quote from a pre-defined solution template below."
 )
 
 templates_df = get_cached_templates()
@@ -166,7 +166,6 @@ if not templates_df.empty:
 
                 clickable_card(
                     template_name,
-                    "Create quote from this solution template.",
                     quote_link,
                     "Use Template"
                 )
