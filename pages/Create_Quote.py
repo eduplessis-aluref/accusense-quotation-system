@@ -18,6 +18,10 @@ from modules.quote_logic import (
 from modules.pdf_generator import generate_pdf
 
 
+# =====================================================
+# PAGE SETUP
+# =====================================================
+
 st.set_page_config(
     page_title="Create Quote",
     layout="wide"
@@ -41,6 +45,10 @@ if st.sidebar.button("🔄 Refresh Google Sheets", use_container_width=True):
 os.makedirs("output/PDFs", exist_ok=True)
 
 
+# =====================================================
+# CACHED GOOGLE SHEETS LOADERS
+# =====================================================
+
 @st.cache_data(ttl=300)
 def get_cached_products():
     return gs.load_products()
@@ -56,21 +64,33 @@ def get_cached_templates():
     return gs.load_solution_templates()
 
 
-if "quote_items" not in st.session_state:
-    st.session_state.quote_items = []
+# =====================================================
+# SESSION STATE DEFAULTS
+# =====================================================
 
-if "loaded_quote_number" not in st.session_state:
-    st.session_state.loaded_quote_number = ""
+defaults = {
+    "quote_items": [],
+    "loaded_quote_number": "",
+    "base_quote_number": "",
+    "revision_mode": False,
+    "dashboard_template_loaded": False,
+    "current_quote_number": "",
+    "customer_name": "",
+    "company_name": "",
+    "site_name": "",
+    "salesperson": current_user.get("Name", ""),
+    "salesperson_phone": current_user.get("Phone", ""),
+    "salesperson_email": current_user.get("Email", ""),
+}
 
-if "base_quote_number" not in st.session_state:
-    st.session_state.base_quote_number = ""
+for key, value in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
-if "revision_mode" not in st.session_state:
-    st.session_state.revision_mode = False
 
-if "dashboard_template_loaded" not in st.session_state:
-    st.session_state.dashboard_template_loaded = False
-
+# =====================================================
+# LOAD GOOGLE SHEET DATA
+# =====================================================
 
 try:
     products_df = get_cached_products()
@@ -88,6 +108,10 @@ if products_df.empty:
     st.error("No products found in Google Sheet.")
     st.stop()
 
+
+# =====================================================
+# VALIDATE PRODUCT SHEET COLUMNS
+# =====================================================
 
 required_columns = [
     "Identification",
@@ -110,6 +134,10 @@ if missing_columns:
     st.stop()
 
 
+# =====================================================
+# CLEAN PRODUCT DATA
+# =====================================================
+
 products_df["Identification"] = (
     products_df["Identification"]
     .fillna("General")
@@ -120,18 +148,21 @@ products_df["Identification"] = (
 
 products_df["Short Name"] = (
     products_df["Short Name"]
+    .fillna("")
     .astype(str)
     .str.strip()
 )
 
 products_df["Description"] = (
     products_df["Description"]
+    .fillna("")
     .astype(str)
     .str.strip()
 )
 
 products_df["Billing"] = (
     products_df["Billing"]
+    .fillna("")
     .astype(str)
     .str.strip()
 )
@@ -163,6 +194,10 @@ products_df["Final Cost before profit"] = pd.to_numeric(
 ).fillna(0)
 
 
+# =====================================================
+# HELPER FUNCTIONS
+# =====================================================
+
 def calculate_line_values(product, qty, discount):
     unit_price = float(product["Selling Price"])
     cost_price = float(product["Final Cost before profit"])
@@ -179,8 +214,158 @@ def calculate_line_values(product, qty, discount):
     return unit_price, cost_price, line_total, line_cost, profit, profit_margin
 
 
-def load_template_into_quote(template_name):
+def normalise_quote_df(df):
+    required_quote_columns = [
+        "Identification",
+        "Product",
+        "Description",
+        "Billing",
+        "Qty",
+        "Discount",
+        "Unit Price",
+        "Cost Price",
+        "Line Cost",
+        "Total",
+        "Profit",
+        "Profit Margin %",
+        "Locked",
+        "Template",
+    ]
 
+    for col in required_quote_columns:
+        if col not in df.columns:
+            if col in [
+                "Qty",
+                "Discount",
+                "Unit Price",
+                "Cost Price",
+                "Line Cost",
+                "Total",
+                "Profit",
+                "Profit Margin %",
+            ]:
+                df[col] = 0
+            else:
+                df[col] = ""
+
+    numeric_cols = [
+        "Qty",
+        "Discount",
+        "Unit Price",
+        "Cost Price",
+        "Line Cost",
+        "Total",
+        "Profit",
+        "Profit Margin %",
+    ]
+
+    for col in numeric_cols:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+    return df[required_quote_columns]
+
+
+def recalculate_quote_df(df):
+    df = normalise_quote_df(df.copy())
+
+    df["Qty"] = pd.to_numeric(df["Qty"], errors="coerce").fillna(1)
+    df["Discount"] = pd.to_numeric(df["Discount"], errors="coerce").fillna(0)
+    df["Unit Price"] = pd.to_numeric(df["Unit Price"], errors="coerce").fillna(0)
+    df["Cost Price"] = pd.to_numeric(df["Cost Price"], errors="coerce").fillna(0)
+
+    df["Total"] = (
+        df["Qty"]
+        * df["Unit Price"]
+        * (1 - df["Discount"] / 100)
+    )
+
+    df["Line Cost"] = df["Qty"] * df["Cost Price"]
+    df["Profit"] = df["Total"] - df["Line Cost"]
+
+    df["Profit Margin %"] = df.apply(
+        lambda row: (row["Profit"] / row["Total"] * 100)
+        if row["Total"] > 0 else 0,
+        axis=1
+    )
+
+    return df
+
+
+def add_auto_monitoring_fee(df):
+    df = df.copy()
+
+    df = df[
+        df["Product"].astype(str).str.strip() != "AUTO_MONITORING"
+    ].copy()
+
+    sensor_rows = df[
+        df["Identification"]
+        .astype(str)
+        .str.lower()
+        .str.contains("sensor", na=False)
+    ]
+
+    total_sensors = float(sensor_rows["Qty"].sum())
+
+    if total_sensors <= 0:
+        return df
+
+    monitoring_products = products_df[
+        products_df["Short Name"]
+        .astype(str)
+        .str.strip()
+        == "Monitoring Fee"
+    ]
+
+    if monitoring_products.empty:
+        st.warning(
+            "Sensors were found, but no product called 'Monitoring Fee' exists in the Products sheet."
+        )
+        return df
+
+    monitoring_product = monitoring_products.iloc[0]
+
+    monthly_fee = float(monitoring_product["Selling Price"])
+    monitoring_cost_price = float(monitoring_product["Final Cost before profit"])
+
+    monitoring_total = total_sensors * monthly_fee * 12
+    monitoring_cost = total_sensors * monitoring_cost_price * 12
+    monitoring_profit = monitoring_total - monitoring_cost
+
+    if monitoring_total > 0:
+        monitoring_margin = (monitoring_profit / monitoring_total) * 100
+    else:
+        monitoring_margin = 0
+
+    monitoring_row = {
+        "Identification": "Service",
+        "Product": "AUTO_MONITORING",
+        "Description": (
+            f"Monitoring Fee - {int(total_sensors)} Sensors "
+            f"(12 Months Prepaid)"
+        ),
+        "Billing": "12 Months Prepaid",
+        "Qty": 1,
+        "Discount": 0,
+        "Unit Price": monitoring_total,
+        "Cost Price": monitoring_cost,
+        "Line Cost": monitoring_cost,
+        "Total": monitoring_total,
+        "Profit": monitoring_profit,
+        "Profit Margin %": monitoring_margin,
+        "Locked": "Yes",
+        "Template": "Auto Monitoring"
+    }
+
+    df = pd.concat(
+        [df, pd.DataFrame([monitoring_row])],
+        ignore_index=True
+    )
+
+    return df
+
+
+def load_template_into_quote(template_name):
     if templates_df.empty:
         st.warning("No solution templates found.")
         return
@@ -197,7 +382,6 @@ def load_template_into_quote(template_name):
     missing_items = []
 
     for _, template_row in template_lines.iterrows():
-
         identification = str(template_row["Identification"]).strip()
         short_name = str(template_row["Short Name"]).strip()
         qty = float(template_row["Qty"])
@@ -258,6 +442,9 @@ def load_template_into_quote(template_name):
             + ", ".join(missing_items)
         )
 
+# =====================================================
+# LOAD TEMPLATE FROM DASHBOARD / QUERY PARAMS
+# =====================================================
 
 query_template = st.query_params.get("template", "")
 session_template = st.session_state.get("selected_template_from_dashboard", "")
@@ -271,6 +458,10 @@ if template_to_load and not st.session_state.dashboard_template_loaded:
     if "selected_template_from_dashboard" in st.session_state:
         del st.session_state.selected_template_from_dashboard
 
+
+# =====================================================
+# SIDEBAR - QUOTE OPTIONS
+# =====================================================
 
 st.sidebar.header("Quote Options")
 
@@ -292,117 +483,110 @@ selected_saved_quote = st.sidebar.selectbox(
 )
 
 if st.sidebar.button("Load Quote"):
-
     if selected_saved_quote:
-
         quote_data = load_quote_json(selected_saved_quote)
 
-        st.session_state.quote_items = quote_data["items"]
+        st.session_state.quote_items = quote_data.get("items", [])
 
-        st.session_state.customer_name = quote_data["customer_name"]
-        st.session_state.company_name = quote_data["company_name"]
-        st.session_state.site_name = quote_data["site_name"]
+        st.session_state.customer_name = quote_data.get("customer_name", "")
+        st.session_state.company_name = quote_data.get("company_name", "")
+        st.session_state.site_name = quote_data.get("site_name", "")
 
-        st.session_state.salesperson = quote_data["salesperson"]
-
-        loaded_quote_number = quote_data["quote_number"]
-
-        st.session_state.loaded_quote_number = loaded_quote_number
-
-        base_quote_number = quote_data.get(
-            "base_quote_number",
-            ""
+        st.session_state.salesperson = quote_data.get(
+            "salesperson",
+            current_user.get("Name", "")
         )
 
+        st.session_state.salesperson_phone = quote_data.get(
+            "salesperson_phone",
+            current_user.get("Phone", "")
+        )
+
+        st.session_state.salesperson_email = quote_data.get(
+            "salesperson_email",
+            current_user.get("Email", "")
+        )
+
+        loaded_quote_number = quote_data.get("quote_number", "")
+        st.session_state.loaded_quote_number = loaded_quote_number
+
+        base_quote_number = quote_data.get("base_quote_number", "")
+
         if not base_quote_number:
-
             if "-REV" in loaded_quote_number:
-                base_quote_number = (
-                    loaded_quote_number.split("-REV")[0]
-                )
-
+                base_quote_number = loaded_quote_number.split("-REV")[0]
             else:
                 base_quote_number = loaded_quote_number
 
-        st.session_state.base_quote_number = (
-            base_quote_number
-        )
-
+        st.session_state.base_quote_number = base_quote_number
         st.session_state.revision_mode = True
         st.session_state.current_quote_number = ""
 
-        st.success(
-            f"Loaded quote: {selected_saved_quote}"
-        )
+        st.success(f"Loaded quote: {selected_saved_quote}")
+        st.rerun()
 
+
+# =====================================================
+# SIDEBAR - CUSTOMER DETAILS
+# =====================================================
 
 st.sidebar.header("Customer Details")
 
 customer_name = st.sidebar.text_input(
     "Customer Name",
-    value=st.session_state.get("customer_name", "")
+    key="customer_name"
 )
 
 company_name = st.sidebar.text_input(
     "Company",
-    value=st.session_state.get("company_name", "")
+    key="company_name"
 )
 
 site_name = st.sidebar.text_input(
     "Site",
-    value=st.session_state.get("site_name", "")
+    key="site_name"
 )
 
+
+# =====================================================
+# SIDEBAR - SALESPERSON DETAILS
+# =====================================================
 
 st.sidebar.header("Salesperson Details")
 
 salesperson = st.sidebar.text_input(
     "Salesperson Name",
-    value=st.session_state.get(
-        "salesperson",
-        current_user.get("Name", "")
-    )
+    key="salesperson"
 )
 
 salesperson_phone = st.sidebar.text_input(
     "Salesperson Phone",
-    value=st.session_state.get(
-        "salesperson_phone",
-        current_user.get("Phone", "")
-    )
+    key="salesperson_phone"
 )
 
 salesperson_email = st.sidebar.text_input(
     "Salesperson Email",
-    value=st.session_state.get(
-        "salesperson_email",
-        current_user.get("Email", "")
-    )
+    key="salesperson_email"
 )
 
 
-if "current_quote_number" not in st.session_state:
-    st.session_state.current_quote_number = ""
+# =====================================================
+# QUOTE NUMBER
+# =====================================================
 
 if st.session_state.revision_mode:
-
     if not st.session_state.current_quote_number:
         quote_number, revision = generate_revision_quote_number(
             st.session_state.base_quote_number
         )
-
         st.session_state.current_quote_number = quote_number
-
     else:
         quote_number = st.session_state.current_quote_number
 
 else:
-
     if not st.session_state.current_quote_number:
         quote_number = generate_quote_number(salesperson)
-
         st.session_state.current_quote_number = quote_number
-
     else:
         quote_number = st.session_state.current_quote_number
 
@@ -411,10 +595,13 @@ st.sidebar.write("### Quote Number")
 st.sidebar.success(quote_number)
 
 
+# =====================================================
+# LOAD SOLUTION TEMPLATE
+# =====================================================
+
 st.header("Load Solution Template")
 
 if not templates_df.empty:
-
     template_names = sorted(
         templates_df["Template Name"]
         .dropna()
@@ -429,12 +616,17 @@ if not templates_df.empty:
 
     if st.button("Load Template Into Quote") and selected_template:
         load_template_into_quote(selected_template)
+        st.rerun()
 
 else:
     st.info(
         "No solution templates found. Add a SolutionTemplates tab in Google Sheets."
     )
 
+
+# =====================================================
+# ADD PRODUCTS MANUALLY
+# =====================================================
 
 st.header("Add Products Manually")
 
@@ -482,7 +674,8 @@ with col1:
     qty = st.number_input(
         "Quantity",
         min_value=1,
-        value=1
+        value=1,
+        step=1
     )
 
 with col2:
@@ -490,7 +683,8 @@ with col2:
         "Discount %",
         min_value=0.0,
         max_value=100.0,
-        value=0.0
+        value=0.0,
+        step=0.5
     )
 
 with col3:
@@ -503,7 +697,6 @@ st.write(selected["Description"])
 
 
 if st.button("Add To Quote"):
-
     unit_price, cost_price, line_total, line_cost, profit, profit_margin = (
         calculate_line_values(selected, qty, discount)
     )
@@ -526,26 +719,24 @@ if st.button("Add To Quote"):
     })
 
     st.success("Product added")
+    st.rerun()
 
+
+# =====================================================
+# QUOTE SUMMARY
+# =====================================================
 
 st.header("Quote Summary")
 
 if st.session_state.quote_items:
 
     quote_df = pd.DataFrame(st.session_state.quote_items)
+    quote_df = normalise_quote_df(quote_df)
 
-    required_quote_columns = [
-        "Cost Price",
-        "Line Cost",
-        "Profit",
-        "Profit Margin %",
-        "Template",
-        "Locked"
-    ]
-
-    for col in required_quote_columns:
-        if col not in quote_df.columns:
-            quote_df[col] = 0 if col != "Template" and col != "Locked" else ""
+    # Remove old automatic monitoring rows before editing
+    quote_df = quote_df[
+        quote_df["Product"].astype(str).str.strip() != "AUTO_MONITORING"
+    ].copy()
 
     edited_df = st.data_editor(
         quote_df,
@@ -627,54 +818,27 @@ if st.session_state.quote_items:
         ]
     )
 
-    edited_df["Qty"] = pd.to_numeric(
-        edited_df["Qty"],
-        errors="coerce"
-    ).fillna(1)
+    edited_df = recalculate_quote_df(edited_df)
 
-    edited_df["Discount"] = pd.to_numeric(
-        edited_df["Discount"],
-        errors="coerce"
-    ).fillna(0)
-
-    edited_df["Unit Price"] = pd.to_numeric(
-        edited_df["Unit Price"],
-        errors="coerce"
-    ).fillna(0)
-
-    edited_df["Cost Price"] = pd.to_numeric(
-        edited_df["Cost Price"],
-        errors="coerce"
-    ).fillna(0)
-
-    edited_df["Total"] = (
-        edited_df["Qty"]
-        * edited_df["Unit Price"]
-        * (1 - edited_df["Discount"] / 100)
-    )
-
-    edited_df["Line Cost"] = (
-        edited_df["Qty"]
-        * edited_df["Cost Price"]
-    )
-
-    edited_df["Profit"] = (
-        edited_df["Total"]
-        - edited_df["Line Cost"]
-    )
-
-    edited_df["Profit Margin %"] = edited_df.apply(
-        lambda row: (row["Profit"] / row["Total"] * 100)
-        if row["Total"] > 0 else 0,
-        axis=1
-    )
-
+    # Save only manually selected/template items back to session state
     st.session_state.quote_items = edited_df.to_dict("records")
 
-    subtotal, vat, grand_total = calculate_totals(edited_df)
+    # Add automatic monitoring fee for final totals and PDF
+    final_df = add_auto_monitoring_fee(edited_df)
+    final_df = recalculate_quote_df(final_df)
 
-    gross_profit = float(edited_df["Profit"].sum())
-    total_cost = float(edited_df["Line Cost"].sum())
+    if len(final_df) != len(edited_df):
+        st.subheader("Final Quote Lines Including Automatic Fees")
+        st.dataframe(
+            final_df,
+            use_container_width=True,
+            hide_index=True
+        )
+
+    subtotal, vat, grand_total = calculate_totals(final_df)
+
+    gross_profit = float(final_df["Profit"].sum())
+    total_cost = float(final_df["Line Cost"].sum())
 
     if subtotal > 0:
         gross_margin = (gross_profit / subtotal) * 100
@@ -699,6 +863,11 @@ if st.session_state.quote_items:
         f"Total Cost: R {total_cost:,.2f} | Gross Margin: {gross_margin:.1f}%"
     )
 
+
+    # =====================================================
+    # GENERATE / SAVE PDF
+    # =====================================================
+
     if st.button("Generate / Save PDF"):
 
         try:
@@ -713,7 +882,7 @@ if st.session_state.quote_items:
                 salesperson=salesperson,
                 salesperson_phone=salesperson_phone,
                 salesperson_email=salesperson_email,
-                quote_df=edited_df,
+                quote_df=final_df,
                 subtotal=subtotal,
                 vat=vat,
                 total=grand_total,
@@ -731,7 +900,7 @@ if st.session_state.quote_items:
                 salesperson=salesperson,
                 salesperson_phone=salesperson_phone,
                 salesperson_email=salesperson_email,
-                items=edited_df.to_dict("records"),
+                items=final_df.to_dict("records"),
                 subtotal=subtotal,
                 vat=vat,
                 total=grand_total,
@@ -763,7 +932,6 @@ if st.session_state.quote_items:
             st.error("Quote save failed.")
             st.error(str(e))
             st.code(traceback.format_exc())
-
 
 else:
     st.info("No products added yet.")
