@@ -1,5 +1,3 @@
-import os
-import json
 import pandas as pd
 import streamlit as st
 
@@ -16,9 +14,6 @@ current_user = require_login()
 
 render_header()
 
-os.makedirs("output/PDFs", exist_ok=True)
-os.makedirs("output/Quotes", exist_ok=True)
-
 st.sidebar.success(f"Logged in as: {current_user.get('Name', '')}")
 logout_button()
 
@@ -30,75 +25,118 @@ if st.sidebar.button("🔄 Refresh Report Data", use_container_width=True):
     st.rerun()
 
 
-QUOTE_FOLDER = "output/Quotes"
+def money(value):
+    try:
+        return "R " + f"{float(value):,.2f}".replace(",", " ")
+    except Exception:
+        return "R 0.00"
 
+
+def percent(value):
+    try:
+        return f"{float(value):.1f}%"
+    except Exception:
+        return "0.0%"
+
+from modules.quote_logic import get_spreadsheet
 
 @st.cache_data(ttl=300)
 def load_quote_data():
 
-    all_quotes = []
+    spreadsheet = get_spreadsheet()
 
-    if not os.path.exists(QUOTE_FOLDER):
+    register_sheet = spreadsheet.worksheet("QuoteRegister")
+    items_sheet = spreadsheet.worksheet("QuoteItems")
+
+    register_rows = register_sheet.get_all_records()
+    item_rows = items_sheet.get_all_records()
+
+    register_df = pd.DataFrame(register_rows)
+    items_df = pd.DataFrame(item_rows)
+
+    if register_df.empty:
         return pd.DataFrame()
 
-    for filename in os.listdir(QUOTE_FOLDER):
+    if items_df.empty:
+        register_df["Total Cost"] = 0
+        register_df["Gross Profit"] = 0
+        register_df["Gross Margin %"] = 0
+        register_df["Template"] = ""
+        return register_df
 
-        if not filename.endswith(".json"):
-            continue
+    numeric_cols = [
+        "Line Cost",
+        "Profit",
+        "Total"
+    ]
 
-        file_path = os.path.join(QUOTE_FOLDER, filename)
+    for col in numeric_cols:
 
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                quote = json.load(f)
+        if col not in items_df.columns:
+            items_df[col] = 0
 
-            quote_number = quote.get("quote_number", "")
-            customer = quote.get("customer_name", "")
-            company = quote.get("company_name", "")
-            site = quote.get("site_name", "")
-            salesperson = quote.get("salesperson", "")
-            subtotal = float(quote.get("subtotal", 0))
-            vat = float(quote.get("vat", 0))
-            total = float(quote.get("total", 0))
+        items_df[col] = pd.to_numeric(
+            items_df[col],
+            errors="coerce"
+        ).fillna(0)
 
-            items = quote.get("items", [])
+    if "Template" not in items_df.columns:
+        items_df["Template"] = ""
 
-            gross_profit = 0
-            total_cost = 0
-            template = ""
+    item_summary = (
+        items_df
+        .groupby("Quote Number", dropna=False)
+        .agg({
+            "Line Cost": "sum",
+            "Profit": "sum",
+            "Template": "first"
+        })
+        .reset_index()
+        .rename(columns={
+            "Line Cost": "Total Cost",
+            "Profit": "Gross Profit"
+        })
+    )
 
-            for item in items:
-                gross_profit += float(item.get("Profit", 0))
-                total_cost += float(item.get("Line Cost", 0))
+    report_df = register_df.merge(
+        item_summary,
+        on="Quote Number",
+        how="left"
+    )
 
-                if not template:
-                    template = str(item.get("Template", ""))
+    report_df["Subtotal"] = pd.to_numeric(
+        report_df["Subtotal"],
+        errors="coerce"
+    ).fillna(0)
 
-            if subtotal > 0:
-                gross_margin = (gross_profit / subtotal) * 100
-            else:
-                gross_margin = 0
+    report_df["VAT"] = pd.to_numeric(
+        report_df["VAT"],
+        errors="coerce"
+    ).fillna(0)
 
-            all_quotes.append({
-                "Quote Number": quote_number,
-                "Customer": customer,
-                "Company": company,
-                "Site": site,
-                "Salesperson": salesperson,
-                "Subtotal": subtotal,
-                "VAT": vat,
-                "Total": total,
-                "Total Cost": total_cost,
-                "Gross Profit": gross_profit,
-                "Gross Margin %": gross_margin,
-                "Template": template,
-                "File": filename
-            })
+    report_df["Total"] = pd.to_numeric(
+        report_df["Total"],
+        errors="coerce"
+    ).fillna(0)
 
-        except Exception as e:
-            print(f"Report load error for {filename}: {e}")
+    report_df["Total Cost"] = pd.to_numeric(
+        report_df["Total Cost"],
+        errors="coerce"
+    ).fillna(0)
 
-    return pd.DataFrame(all_quotes)
+    report_df["Gross Profit"] = pd.to_numeric(
+        report_df["Gross Profit"],
+        errors="coerce"
+    ).fillna(0)
+
+    report_df["Gross Margin %"] = report_df.apply(
+        lambda row: (
+            row["Gross Profit"] / row["Subtotal"] * 100
+        ) if row["Subtotal"] > 0 else 0,
+        axis=1
+    )
+
+    return report_df
 
 
 st.title("Sales Report")
@@ -207,12 +245,20 @@ salesperson_summary["Gross Margin %"] = salesperson_summary.apply(
     axis=1
 )
 
+salesperson_display = salesperson_summary.copy()
+
+for col in ["Sales Excl. VAT", "Gross Profit", "Total"]:
+    salesperson_display[col] = salesperson_display[col].apply(money)
+
+salesperson_display["Gross Margin %"] = (
+    salesperson_display["Gross Margin %"].apply(percent)
+)
+
 st.dataframe(
-    salesperson_summary,
+    salesperson_display,
     use_container_width=True,
     hide_index=True
 )
-
 
 st.subheader("Sales by Template")
 
@@ -241,8 +287,17 @@ template_summary["Gross Margin %"] = template_summary.apply(
     axis=1
 )
 
+template_display = template_summary.copy()
+
+for col in ["Sales Excl. VAT", "Gross Profit", "Total"]:
+    template_display[col] = template_display[col].apply(money)
+
+template_display["Gross Margin %"] = (
+    template_display["Gross Margin %"].apply(percent)
+)
+
 st.dataframe(
-    template_summary,
+    template_display,
     use_container_width=True,
     hide_index=True
 )
@@ -250,8 +305,44 @@ st.dataframe(
 
 st.subheader("Quote Register Report")
 
+display_cols = [
+    "Quote Number",
+    "Customer",
+    "Company",
+    "Salesperson",
+    "Subtotal",
+    "VAT",
+    "Total",
+    "Total Cost",
+    "Gross Profit",
+    "Gross Margin %",
+    "Template"
+]
+
+available_cols = [
+    col for col in display_cols
+    if col in filtered_df.columns
+]
+
+register_display = filtered_df[available_cols].copy()
+
+for col in [
+    "Subtotal",
+    "VAT",
+    "Total",
+    "Total Cost",
+    "Gross Profit"
+]:
+    if col in register_display.columns:
+        register_display[col] = register_display[col].apply(money)
+
+if "Gross Margin %" in register_display.columns:
+    register_display["Gross Margin %"] = (
+        register_display["Gross Margin %"].apply(percent)
+    )
+
 st.dataframe(
-    filtered_df,
+    register_display,
     use_container_width=True,
     hide_index=True
 )
