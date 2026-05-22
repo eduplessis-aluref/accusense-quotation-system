@@ -9,15 +9,11 @@ st.set_page_config(page_title="AccuSense Dashboard", layout="wide")
 
 current_user = require_login()
 
-from modules.auth import require_login, logout_button
-
 QUOTE_PAGE = "./Create_Quote"
-GOOGLE_SHEET_URL = "PASTE_YOUR_FULL_GOOGLE_SHEET_URL_HERE"
 
 render_header()
 
 st.sidebar.success(f"Logged in as: {current_user.get('Name', '')}")
-
 logout_button()
 
 st.sidebar.divider()
@@ -101,7 +97,7 @@ def clickable_card(title, text, link, hint):
 
 st.subheader("Quick Actions")
 
-col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns(2)
 
 with col1:
     clickable_card(
@@ -117,14 +113,6 @@ with col2:
         "Recall previous quotations and create revisions.",
         QUOTE_PAGE,
         "Open Revisions"
-    )
-
-with col3:
-    clickable_card(
-        "📊 Quote Register",
-        "Open quote history in Google Sheets.",
-        GOOGLE_SHEET_URL,
-        "Open Quote Register"
     )
 
 st.divider()
@@ -164,12 +152,12 @@ if not templates_df.empty:
                     f"{QUOTE_PAGE}?template={template_encoded}"
                 )
 
-            clickable_card(
-                template_name,
-                "Create quote from this solution template.",
-                quote_link,
-                "Use Template"
-)
+                clickable_card(
+                    template_name,
+                    "Create quote from this solution template.",
+                    quote_link,
+                    "Use Template"
+                )
 
 else:
     st.warning("No solution templates found in Google Sheets.")
