@@ -68,6 +68,12 @@ def get_cached_templates():
 # SESSION STATE DEFAULTS
 # =====================================================
 
+def safe_text(value):
+    if value is None:
+        return ""
+    return str(value)
+
+
 defaults = {
     "quote_items": [],
     "loaded_quote_number": "",
@@ -78,9 +84,9 @@ defaults = {
     "customer_name": "",
     "company_name": "",
     "site_name": "",
-    "salesperson": current_user.get("Name", ""),
-    "salesperson_phone": current_user.get("Phone", ""),
-    "salesperson_email": current_user.get("Email", ""),
+    "salesperson": safe_text(current_user.get("Name", "")),
+    "salesperson_phone": safe_text(current_user.get("Phone", "")),
+    "salesperson_email": safe_text(current_user.get("Email", "")),
 }
 
 for key, value in defaults.items():
@@ -552,6 +558,9 @@ site_name = st.sidebar.text_input(
 # SIDEBAR - SALESPERSON DETAILS
 # =====================================================
 
+st.session_state.salesperson = safe_text(st.session_state.salesperson)
+st.session_state.salesperson_phone = safe_text(st.session_state.salesperson_phone)
+st.session_state.salesperson_email = safe_text(st.session_state.salesperson_email)
 st.sidebar.header("Salesperson Details")
 
 salesperson = st.sidebar.text_input(
