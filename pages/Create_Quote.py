@@ -280,6 +280,7 @@ if st.sidebar.button("Clear Current Quote"):
     st.session_state.base_quote_number = ""
     st.session_state.revision_mode = False
     st.session_state.dashboard_template_loaded = False
+    st.session_state.current_quote_number = ""
     st.rerun()
 
 
@@ -360,12 +361,30 @@ salesperson_email = st.sidebar.text_input(
 )
 
 
+if "current_quote_number" not in st.session_state:
+    st.session_state.current_quote_number = ""
+
 if st.session_state.revision_mode:
-    quote_number, revision = generate_revision_quote_number(
-        st.session_state.base_quote_number
-    )
+
+    if not st.session_state.current_quote_number:
+        quote_number, revision = generate_revision_quote_number(
+            st.session_state.base_quote_number
+        )
+
+        st.session_state.current_quote_number = quote_number
+
+    else:
+        quote_number = st.session_state.current_quote_number
+
 else:
-    quote_number = generate_quote_number(salesperson)
+
+    if not st.session_state.current_quote_number:
+        quote_number = generate_quote_number(salesperson)
+
+        st.session_state.current_quote_number = quote_number
+
+    else:
+        quote_number = st.session_state.current_quote_number
 
 
 st.sidebar.write("### Quote Number")
