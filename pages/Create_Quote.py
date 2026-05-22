@@ -305,15 +305,35 @@ if st.sidebar.button("Load Quote"):
 
         st.session_state.salesperson = quote_data["salesperson"]
 
-        st.session_state.loaded_quote_number = quote_data["quote_number"]
+        loaded_quote_number = quote_data["quote_number"]
+
+        st.session_state.loaded_quote_number = loaded_quote_number
+
+        base_quote_number = quote_data.get(
+            "base_quote_number",
+            ""
+        )
+
+        if not base_quote_number:
+
+            if "-REV" in loaded_quote_number:
+                base_quote_number = (
+                    loaded_quote_number.split("-REV")[0]
+                )
+
+            else:
+                base_quote_number = loaded_quote_number
 
         st.session_state.base_quote_number = (
-            quote_data["base_quote_number"]
+            base_quote_number
         )
 
         st.session_state.revision_mode = True
+        st.session_state.current_quote_number = ""
 
-        st.success(f"Loaded quote: {selected_saved_quote}")
+        st.success(
+            f"Loaded quote: {selected_saved_quote}"
+        )
 
 
 st.sidebar.header("Customer Details")
