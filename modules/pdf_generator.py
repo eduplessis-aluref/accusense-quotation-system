@@ -72,33 +72,6 @@ def draw_footer(canvas_obj, doc):
     canvas_obj.setFillColor(GREEN)
     canvas_obj.drawPath(green_path, fill=1, stroke=0)
 
-    canvas_obj.setFillColor(colors.white)
-    canvas_obj.setFont(FONT_NORMAL, 7.5)
-
-    icon_x = 12 * mm
-    text_x = 18 * mm
-    y = 21 * mm
-
-    footer_lines = [
-        ("●", "AccuSense (Pty) Ltd"),
-        ("☎", "+27 83 629 7155"),
-        ("✉", "eduplessis@accusense.net"),
-        ("●", "www.accusense.net"),
-    ]
-
-    for icon, text in footer_lines:
-        canvas_obj.setFillColor(GREEN)
-        canvas_obj.circle(icon_x, y + 1.5, 2.2 * mm, fill=1, stroke=0)
-
-        canvas_obj.setFillColor(colors.white)
-        canvas_obj.setFont(FONT_BOLD, 6)
-        canvas_obj.drawCentredString(icon_x, y, icon)
-
-        canvas_obj.setFont(FONT_NORMAL, 7.5)
-        canvas_obj.drawString(text_x, y, text)
-
-        y -= 5 * mm
-
     emblem_path = "Emblem.png"
 
     if os.path.exists(emblem_path):
@@ -309,10 +282,6 @@ def generate_pdf(
             f"R {float(row['Total']):,.2f}",
         ])
 
-    # IMPORTANT:
-    # These widths add up to 182mm.
-    # The summary and totals wrapper below also adds up to 182mm.
-    # This makes the totals table align with the Total column.
     product_table = Table(
         table_data,
         repeatRows=1,
@@ -401,8 +370,6 @@ def generate_pdf(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
 
-    # 48 + 86 + 48 = 182mm
-    # This matches the full width of the product table.
     summary_totals_table = Table(
         [[summary_table, "", totals_table]],
         colWidths=[48 * mm, 86 * mm, 48 * mm],
@@ -438,6 +405,39 @@ def generate_pdf(
     """
 
     elements.append(Paragraph(closing_text, normal))
+    elements.append(Spacer(1, 14))
+
+    footer_text = [
+        "70 Ceramic Curve - Alton Richards Bay. P.O. Box 102183 - Meerensee - 3901 - Kwa-Zulu Natal - South Africa",
+        "Office:+27(0) 35 751 1229 Fax: +27(0) 35 751 2016 Email: info@aluref.net",
+        "Reg. No. 2010/023755/07",
+        "Directors: DGM Blackmore, AF Wolhüter, S Jughdis, S Jughdis (Mrs)"
+    ]
+
+    footer_style = ParagraphStyle(
+        "FooterStyle",
+        parent=styles["BodyText"],
+        fontName=FONT_NORMAL,
+        fontSize=7,
+        leading=9,
+        alignment=1,
+        textColor=colors.white
+    )
+
+    footer_table = Table(
+        [[Paragraph(line, footer_style)] for line in footer_text],
+        colWidths=[182 * mm]
+    )
+
+    footer_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), BLUE),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+    ]))
+
+    elements.append(footer_table)
 
     doc.build(
         elements,
