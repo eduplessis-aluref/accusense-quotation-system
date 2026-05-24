@@ -77,8 +77,8 @@ def generate_revision_quote_number(base_quote_number):
     revision_number = next_revision_number(base_quote_number)
 
     return (
-        f"{base_quote_number}-REV{revision_number:02d}",
-        f"REV{revision_number:02d}"
+        f"{base_quote_number}-R{revision_number:02d}",
+        f"R{revision_number:02d}"
     )
 
 
