@@ -72,6 +72,22 @@ def draw_footer(canvas_obj, doc):
     canvas_obj.setFillColor(GREEN)
     canvas_obj.drawPath(green_path, fill=1, stroke=0)
 
+    footer_lines = [
+        "70 Ceramic Curve - Alton Richards Bay. P.O. Box 102183 - Meerensee - 3901 - Kwa-Zulu Natal - South Africa",
+        "Office:+27(0) 35 751 1229 Fax: +27(0) 35 751 2016 Email: info@aluref.net",
+        "Reg. No. 2010/023755/07",
+        "Directors: DGM Blackmore, AF Wolhüter, S Jughdis, S Jughdis (Mrs)",
+    ]
+
+    canvas_obj.setFillColor(colors.white)
+    canvas_obj.setFont(FONT_NORMAL, 6.5)
+
+    y = 21 * mm
+
+    for line in footer_lines:
+        canvas_obj.drawCentredString(page_width / 2, y, line)
+        y -= 4.2 * mm
+
     emblem_path = "Emblem.png"
 
     if os.path.exists(emblem_path):
@@ -405,39 +421,6 @@ def generate_pdf(
     """
 
     elements.append(Paragraph(closing_text, normal))
-    elements.append(Spacer(1, 14))
-
-    footer_text = [
-        "70 Ceramic Curve - Alton Richards Bay. P.O. Box 102183 - Meerensee - 3901 - Kwa-Zulu Natal - South Africa",
-        "Office:+27(0) 35 751 1229 Fax: +27(0) 35 751 2016 Email: info@aluref.net",
-        "Reg. No. 2010/023755/07",
-        "Directors: DGM Blackmore, AF Wolhüter, S Jughdis, S Jughdis (Mrs)"
-    ]
-
-    footer_style = ParagraphStyle(
-        "FooterStyle",
-        parent=styles["BodyText"],
-        fontName=FONT_NORMAL,
-        fontSize=7,
-        leading=9,
-        alignment=1,
-        textColor=colors.white
-    )
-
-    footer_table = Table(
-        [[Paragraph(line, footer_style)] for line in footer_text],
-        colWidths=[182 * mm]
-    )
-
-    footer_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), BLUE),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-    ]))
-
-    elements.append(footer_table)
 
     doc.build(
         elements,
