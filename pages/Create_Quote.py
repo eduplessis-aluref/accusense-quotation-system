@@ -43,6 +43,7 @@ if st.sidebar.button("🔄 Refresh Google Sheets", use_container_width=True):
 
 
 os.makedirs("output/PDFs", exist_ok=True)
+os.makedirs("output/quotes", exist_ok=True)
 
 
 # =====================================================
@@ -297,6 +298,22 @@ def recalculate_quote_df(df):
     return df
 
 
+def quote_already_saved(quote_number):
+    json_path = os.path.join(
+        "output",
+        "quotes",
+        f"{quote_number}.json"
+    )
+
+    pdf_path = os.path.join(
+        "output",
+        "PDFs",
+        f"{quote_number}.pdf"
+    )
+
+    return os.path.exists(json_path) or os.path.exists(pdf_path)
+
+
 def add_auto_monitoring_fee(df):
     df = df.copy()
 
@@ -369,7 +386,6 @@ def add_auto_monitoring_fee(df):
     )
 
     return df
-
 
 def load_template_into_quote(template_name):
     if templates_df.empty:
@@ -448,6 +464,7 @@ def load_template_into_quote(template_name):
             + ", ".join(missing_items)
         )
 
+
 # =====================================================
 # LOAD TEMPLATE FROM DASHBOARD / QUERY PARAMS
 # =====================================================
@@ -498,19 +515,16 @@ if st.sidebar.button("Load Quote"):
         st.session_state.company_name = quote_data.get("company_name", "")
         st.session_state.site_name = quote_data.get("site_name", "")
 
-        st.session_state.salesperson = quote_data.get(
-            "salesperson",
-            current_user.get("Name", "")
+        st.session_state.salesperson = safe_text(
+            quote_data.get("salesperson", current_user.get("Name", ""))
         )
 
-        st.session_state.salesperson_phone = quote_data.get(
-            "salesperson_phone",
-            current_user.get("Phone", "")
+        st.session_state.salesperson_phone = safe_text(
+            quote_data.get("salesperson_phone", current_user.get("Phone", ""))
         )
 
-        st.session_state.salesperson_email = quote_data.get(
-            "salesperson_email",
-            current_user.get("Email", "")
+        st.session_state.salesperson_email = safe_text(
+            quote_data.get("salesperson_email", current_user.get("Email", ""))
         )
 
         loaded_quote_number = quote_data.get("quote_number", "")
@@ -561,6 +575,7 @@ site_name = st.sidebar.text_input(
 st.session_state.salesperson = safe_text(st.session_state.salesperson)
 st.session_state.salesperson_phone = safe_text(st.session_state.salesperson_phone)
 st.session_state.salesperson_email = safe_text(st.session_state.salesperson_email)
+
 st.sidebar.header("Salesperson Details")
 
 salesperson = st.sidebar.text_input(
@@ -728,8 +743,7 @@ if st.button("Add To Quote"):
     })
 
     st.success("Product added")
-    st.rerun()
-
+    st.rerun()    
 
 # =====================================================
 # QUOTE SUMMARY
@@ -742,7 +756,6 @@ if st.session_state.quote_items:
     quote_df = pd.DataFrame(st.session_state.quote_items)
     quote_df = normalise_quote_df(quote_df)
 
-    # Remove old automatic monitoring rows before editing
     quote_df = quote_df[
         quote_df["Product"].astype(str).str.strip() != "AUTO_MONITORING"
     ].copy()
@@ -829,10 +842,8 @@ if st.session_state.quote_items:
 
     edited_df = recalculate_quote_df(edited_df)
 
-    # Save only manually selected/template items back to session state
     st.session_state.quote_items = edited_df.to_dict("records")
 
-    # Add automatic monitoring fee for final totals and PDF
     final_df = add_auto_monitoring_fee(edited_df)
     final_df = recalculate_quote_df(final_df)
 
@@ -877,70 +888,98 @@ if st.session_state.quote_items:
     # GENERATE / SAVE PDF
     # =====================================================
 
-    if st.button("Generate / Save PDF"):
+    already_saved = quote_already_saved(quote_number)
 
-        try:
-            st.info("Starting PDF generation...")
+    if already_saved:
 
-            pdf_path = generate_pdf(
-                quote_number=quote_number,
-                customer=customer_name,
-                company=company_name,
-                site=site_name,
-                customer_email="",
-                salesperson=salesperson,
-                salesperson_phone=salesperson_phone,
-                salesperson_email=salesperson_email,
-                quote_df=final_df,
-                subtotal=subtotal,
-                vat=vat,
-                total=grand_total,
-                terms=terms
-            )
+        st.warning(
+            "This quote has already been generated and saved. "
+            "To create a changed version, load it as a revision or clear the current quote."
+        )
 
-            st.success(f"PDF generated successfully: {pdf_path}")
+        existing_pdf_path = os.path.join(
+            "output",
+            "PDFs",
+            f"{quote_number}.pdf"
+        )
 
-            saved_json_path = save_quote_json(
-                quote_number=quote_number,
-                customer_name=customer_name,
-                company_name=company_name,
-                site_name=site_name,
-                customer_email="",
-                salesperson=salesperson,
-                salesperson_phone=salesperson_phone,
-                salesperson_email=salesperson_email,
-                items=final_df.to_dict("records"),
-                subtotal=subtotal,
-                vat=vat,
-                total=grand_total,
-                pdf_path=pdf_path
-            )
+        if os.path.exists(existing_pdf_path):
 
-            st.success(f"Quote JSON saved successfully: {saved_json_path}")
+            with open(existing_pdf_path, "rb") as f:
 
-            st.write("PDF saved to:")
-            st.code(pdf_path)
+                st.download_button(
+                    "⬇ Download Existing PDF",
+                    f,
+                    file_name=f"{quote_number}.pdf",
+                    mime="application/pdf"
+                )
 
-            st.write("Quote data saved to:")
-            st.code(saved_json_path)
+    else:
 
-            if os.path.exists(pdf_path):
-                with open(pdf_path, "rb") as f:
-                    st.download_button(
-                        "⬇ Download PDF",
-                        f,
-                        file_name=f"{quote_number}.pdf",
-                        mime="application/pdf"
-                    )
-            else:
-                st.error("PDF file was not found after generation.")
+        if st.button("Generate / Save PDF"):
 
-        except Exception as e:
-            import traceback
+            try:
+                st.info("Starting PDF generation...")
 
-            st.error("Quote save failed.")
-            st.error(str(e))
-            st.code(traceback.format_exc())
+                pdf_path = generate_pdf(
+                    quote_number=quote_number,
+                    customer=customer_name,
+                    company=company_name,
+                    site=site_name,
+                    customer_email="",
+                    salesperson=salesperson,
+                    salesperson_phone=salesperson_phone,
+                    salesperson_email=salesperson_email,
+                    quote_df=final_df,
+                    subtotal=subtotal,
+                    vat=vat,
+                    total=grand_total,
+                    terms=terms
+                )
+
+                st.success(f"PDF generated successfully: {pdf_path}")
+
+                saved_json_path = save_quote_json(
+                    quote_number=quote_number,
+                    customer_name=customer_name,
+                    company_name=company_name,
+                    site_name=site_name,
+                    customer_email="",
+                    salesperson=salesperson,
+                    salesperson_phone=salesperson_phone,
+                    salesperson_email=salesperson_email,
+                    items=final_df.to_dict("records"),
+                    subtotal=subtotal,
+                    vat=vat,
+                    total=grand_total,
+                    pdf_path=pdf_path
+                )
+
+                st.success(f"Quote JSON saved successfully: {saved_json_path}")
+
+                st.write("PDF saved to:")
+                st.code(pdf_path)
+
+                st.write("Quote data saved to:")
+                st.code(saved_json_path)
+
+                if os.path.exists(pdf_path):
+                    with open(pdf_path, "rb") as f:
+                        st.download_button(
+                            "⬇ Download PDF",
+                            f,
+                            file_name=f"{quote_number}.pdf",
+                            mime="application/pdf"
+                        )
+                else:
+                    st.error("PDF file was not found after generation.")
+
+            except Exception as e:
+                import traceback
+
+                st.error("Quote save failed.")
+                st.error(str(e))
+                st.code(traceback.format_exc())
 
 else:
     st.info("No products added yet.")
