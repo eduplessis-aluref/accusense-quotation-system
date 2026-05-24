@@ -17,9 +17,18 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 
+# =====================================================
+# COLORS
+# =====================================================
+
 BLUE = colors.HexColor("#0B4F9C")
 GREEN = colors.HexColor("#6CB33F")
 LIGHT_BLUE = colors.HexColor("#F2F6FB")
+
+
+# =====================================================
+# FONTS
+# =====================================================
 
 FONT_NORMAL = "Calibri"
 FONT_BOLD = "Calibri-Bold"
@@ -32,45 +41,119 @@ except Exception:
     FONT_BOLD = "Helvetica-Bold"
 
 
+# =====================================================
+# HELPERS
+# =====================================================
+
 def first_name_only(name):
     if not str(name).strip():
         return "Customer"
+
     return str(name).strip().split()[0]
 
 
 def image_aspect(path, width_mm):
+
     img = ImageReader(path)
     iw, ih = img.getSize()
+
     width = width_mm * mm
     height = width * ih / iw
-    return Image(path, width=width, height=height)
 
+    return Image(
+        path,
+        width=width,
+        height=height
+    )
+
+
+# =====================================================
+# FOOTER DRAWING
+# =====================================================
 
 def draw_footer(canvas_obj, doc):
+
     page_width, page_height = A4
 
     canvas_obj.saveState()
 
+    # =================================================
+    # BLUE WAVE
+    # =================================================
+
     blue_path = canvas_obj.beginPath()
+
     blue_path.moveTo(0, 0)
     blue_path.lineTo(0, 24 * mm)
-    blue_path.curveTo(35 * mm, 32 * mm, 72 * mm, 18 * mm, 112 * mm, 15 * mm)
-    blue_path.curveTo(150 * mm, 12 * mm, 180 * mm, 22 * mm, page_width, 34 * mm)
+
+    blue_path.curveTo(
+        35 * mm,
+        32 * mm,
+        72 * mm,
+        18 * mm,
+        112 * mm,
+        15 * mm
+    )
+
+    blue_path.curveTo(
+        150 * mm,
+        12 * mm,
+        180 * mm,
+        22 * mm,
+        page_width,
+        34 * mm
+    )
+
     blue_path.lineTo(page_width, 0)
     blue_path.close()
 
     canvas_obj.setFillColor(BLUE)
-    canvas_obj.drawPath(blue_path, fill=1, stroke=0)
+    canvas_obj.drawPath(
+        blue_path,
+        fill=1,
+        stroke=0
+    )
+
+    # =================================================
+    # GREEN WAVE
+    # =================================================
 
     green_path = canvas_obj.beginPath()
+
     green_path.moveTo(65 * mm, 0)
-    green_path.curveTo(105 * mm, 22 * mm, 145 * mm, 7 * mm, 178 * mm, 9 * mm)
-    green_path.curveTo(194 * mm, 10 * mm, 205 * mm, 20 * mm, page_width, 24 * mm)
+
+    green_path.curveTo(
+        105 * mm,
+        22 * mm,
+        145 * mm,
+        7 * mm,
+        178 * mm,
+        9 * mm
+    )
+
+    green_path.curveTo(
+        194 * mm,
+        10 * mm,
+        205 * mm,
+        20 * mm,
+        page_width,
+        24 * mm
+    )
+
     green_path.lineTo(page_width, 0)
     green_path.close()
 
     canvas_obj.setFillColor(GREEN)
-    canvas_obj.drawPath(green_path, fill=1, stroke=0)
+
+    canvas_obj.drawPath(
+        green_path,
+        fill=1,
+        stroke=0
+    )
+
+    # =================================================
+    # FOOTER TEXT
+    # =================================================
 
     footer_lines = [
         "70 Ceramic Curve - Alton Richards Bay. P.O. Box 102183 - Meerensee - 3901 - Kwa-Zulu Natal - South Africa",
@@ -80,18 +163,35 @@ def draw_footer(canvas_obj, doc):
     ]
 
     canvas_obj.setFillColor(colors.white)
-    canvas_obj.setFont(FONT_NORMAL, 6.5)
 
-    y = 21 * mm
+    canvas_obj.setFont(
+        FONT_NORMAL,
+        4.8
+    )
+
+    text_x = 7 * mm
+    y = 16 * mm
 
     for line in footer_lines:
-        canvas_obj.drawCentredString(page_width / 2, y, line)
-        y -= 4.2 * mm
+
+        canvas_obj.drawString(
+            text_x,
+            y,
+            line
+        )
+
+        y -= 2.7 * mm
+
+    # =================================================
+    # EMBLEM
+    # =================================================
 
     emblem_path = "Emblem.png"
 
     if os.path.exists(emblem_path):
+
         try:
+
             img = ImageReader(emblem_path)
             iw, ih = img.getSize()
 
@@ -118,6 +218,10 @@ def draw_footer(canvas_obj, doc):
     canvas_obj.restoreState()
 
 
+# =====================================================
+# PDF GENERATOR
+# =====================================================
+
 def generate_pdf(
     quote_number,
     customer,
@@ -134,7 +238,10 @@ def generate_pdf(
     terms
 ):
 
-    os.makedirs("output/PDFs", exist_ok=True)
+    os.makedirs(
+        "output/PDFs",
+        exist_ok=True
+    )
 
     pdf_path = f"output/PDFs/{quote_number}.pdf"
 
@@ -144,10 +251,14 @@ def generate_pdf(
         rightMargin=13 * mm,
         leftMargin=13 * mm,
         topMargin=10 * mm,
-        bottomMargin=38 * mm
+        bottomMargin=42 * mm
     )
 
     styles = getSampleStyleSheet()
+
+    # =================================================
+    # STYLES
+    # =================================================
 
     normal = ParagraphStyle(
         "Normal",
@@ -193,15 +304,32 @@ def generate_pdf(
 
     elements = []
 
+    # =================================================
+    # LOGO + QUOTE NUMBER
+    # =================================================
+
     logo_path = "Logo.png"
 
     if os.path.exists(logo_path):
+
         try:
-            logo = image_aspect(logo_path, 82)
+            logo = image_aspect(
+                logo_path,
+                82
+            )
+
         except Exception:
-            logo = Paragraph("<b>AccuSense</b>", styles["Heading1"])
+            logo = Paragraph(
+                "<b>AccuSense</b>",
+                styles["Heading1"]
+            )
+
     else:
-        logo = Paragraph("<b>AccuSense</b>", styles["Heading1"])
+
+        logo = Paragraph(
+            "<b>AccuSense</b>",
+            styles["Heading1"]
+        )
 
     quote_number_text = Paragraph(
         f"<font color='#0B4F9C'><b>Quotation:</b></font> "
@@ -227,33 +355,76 @@ def generate_pdf(
     elements.append(header_table)
     elements.append(Spacer(1, 40))
 
+    # =================================================
+    # CUSTOMER DETAILS
+    # =================================================
+
     details_data = [
+
         [
-            Paragraph("<font color='#0B4F9C'><b>Customer:</b></font>", bold),
+            Paragraph(
+                "<font color='#0B4F9C'><b>Customer:</b></font>",
+                bold
+            ),
+
             Paragraph(customer, normal),
+
             "",
-            Paragraph("<font color='#0B4F9C'><b>Salesperson:</b></font>", bold),
+
+            Paragraph(
+                "<font color='#0B4F9C'><b>Salesperson:</b></font>",
+                bold
+            ),
+
             Paragraph(salesperson, normal),
         ],
+
         [
-            Paragraph("<font color='#0B4F9C'><b>Company:</b></font>", bold),
+            Paragraph(
+                "<font color='#0B4F9C'><b>Company:</b></font>",
+                bold
+            ),
+
             Paragraph(company, normal),
+
             "",
-            Paragraph("<font color='#0B4F9C'><b>Phone:</b></font>", bold),
+
+            Paragraph(
+                "<font color='#0B4F9C'><b>Phone:</b></font>",
+                bold
+            ),
+
             Paragraph(salesperson_phone, normal),
         ],
+
         [
-            Paragraph("<font color='#0B4F9C'><b>Site:</b></font>", bold),
+            Paragraph(
+                "<font color='#0B4F9C'><b>Site:</b></font>",
+                bold
+            ),
+
             Paragraph(site, normal),
+
             "",
-            Paragraph("<font color='#0B4F9C'><b>Email:</b></font>", bold),
+
+            Paragraph(
+                "<font color='#0B4F9C'><b>Email:</b></font>",
+                bold
+            ),
+
             Paragraph(salesperson_email, normal),
         ],
     ]
 
     details_table = Table(
         details_data,
-        colWidths=[24 * mm, 58 * mm, 16 * mm, 28 * mm, 56 * mm]
+        colWidths=[
+            24 * mm,
+            58 * mm,
+            16 * mm,
+            28 * mm,
+            56 * mm
+        ]
     )
 
     details_table.setStyle(TableStyle([
@@ -267,6 +438,10 @@ def generate_pdf(
     elements.append(details_table)
     elements.append(Spacer(1, 14))
 
+    # =================================================
+    # INTRO
+    # =================================================
+
     elements.append(
         Paragraph(
             f"Dear {first_name_only(customer)}, thank you for the opportunity "
@@ -276,6 +451,10 @@ def generate_pdf(
     )
 
     elements.append(Spacer(1, 8))
+
+    # =================================================
+    # PRODUCT TABLE
+    # =================================================
 
     table_data = [[
         "Product",
@@ -288,13 +467,30 @@ def generate_pdf(
     ]]
 
     for _, row in quote_df.iterrows():
+
         table_data.append([
-            Paragraph(f"<b>{str(row['Product'])}</b>", normal),
-            Paragraph(str(row["Description"]), normal),
-            Paragraph(str(row.get("Billing", "")), normal),
+
+            Paragraph(
+                f"<b>{str(row['Product'])}</b>",
+                normal
+            ),
+
+            Paragraph(
+                str(row["Description"]),
+                normal
+            ),
+
+            Paragraph(
+                str(row.get("Billing", "")),
+                normal
+            ),
+
             str(row["Qty"]),
+
             f"{float(row['Discount']):.1f}%",
+
             f"R {float(row['Unit Price']):,.2f}",
+
             f"R {float(row['Total']):,.2f}",
         ])
 
@@ -313,32 +509,57 @@ def generate_pdf(
     )
 
     product_table.setStyle(TableStyle([
+
         ("BACKGROUND", (0, 0), (-1, 0), BLUE),
+
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+
         ("FONTNAME", (0, 0), (-1, 0), FONT_BOLD),
+
         ("FONTSIZE", (0, 0), (-1, 0), 7.5),
+
         ("GRID", (0, 0), (-1, -1), 0.45, colors.grey),
+
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+
         ("ALIGN", (3, 1), (4, -1), "CENTER"),
+
         ("ALIGN", (5, 1), (6, -1), "RIGHT"),
+
         ("FONTNAME", (0, 1), (-1, -1), FONT_NORMAL),
+
         ("FONTSIZE", (0, 1), (-1, -1), 7),
+
         ("TOPPADDING", (0, 0), (-1, -1), 4),
+
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
 
     elements.append(product_table)
     elements.append(Spacer(1, 12))
 
+    # =================================================
+    # COST SUMMARY
+    # =================================================
+
     if "Billing" in quote_df.columns:
+
         once_off_total = quote_df[
-            quote_df["Billing"].astype(str).str.lower().str.contains("once")
+            quote_df["Billing"]
+            .astype(str)
+            .str.lower()
+            .str.contains("once")
         ]["Total"].sum()
 
         monthly_total = quote_df[
-            quote_df["Billing"].astype(str).str.lower().str.contains("monthly")
+            quote_df["Billing"]
+            .astype(str)
+            .str.lower()
+            .str.contains("monthly")
         ]["Total"].sum()
+
     else:
+
         once_off_total = subtotal
         monthly_total = 0
 
@@ -388,7 +609,11 @@ def generate_pdf(
 
     summary_totals_table = Table(
         [[summary_table, "", totals_table]],
-        colWidths=[48 * mm, 86 * mm, 48 * mm],
+        colWidths=[
+            48 * mm,
+            86 * mm,
+            48 * mm
+        ],
         hAlign="LEFT"
     )
 
@@ -401,12 +626,37 @@ def generate_pdf(
     elements.append(summary_totals_table)
     elements.append(Spacer(1, 16))
 
-    elements.append(Paragraph("Terms & Conditions", blue_heading))
+    # =================================================
+    # TERMS
+    # =================================================
+
+    elements.append(
+        Paragraph(
+            "Terms & Conditions",
+            blue_heading
+        )
+    )
+
     elements.append(Spacer(1, 4))
-    elements.append(Paragraph(terms, normal))
+
+    elements.append(
+        Paragraph(
+            terms,
+            normal
+        )
+    )
+
     elements.append(Spacer(1, 10))
 
-    line = Table([[""]], colWidths=[182 * mm])
+    # =================================================
+    # SIGN OFF
+    # =================================================
+
+    line = Table(
+        [[""]],
+        colWidths=[182 * mm]
+    )
+
     line.setStyle(TableStyle([
         ("LINEABOVE", (0, 0), (-1, -1), 0.6, BLUE),
     ]))
@@ -420,7 +670,16 @@ def generate_pdf(
     <b>{salesperson}</b>
     """
 
-    elements.append(Paragraph(closing_text, normal))
+    elements.append(
+        Paragraph(
+            closing_text,
+            normal
+        )
+    )
+
+    # =================================================
+    # BUILD PDF
+    # =================================================
 
     doc.build(
         elements,
