@@ -1,25 +1,196 @@
-IndentationError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
-Traceback:
-File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 129, in exec_func_with_error_handling
-    result = func()
-File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 687, in code_to_exec
-    _mpa_v1(self._main_script_path)
-    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
-File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 166, in _mpa_v1
-    page.run()
-    ~~~~~~~~^^
-File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/navigation/page.py", line 486, in run
-    code = ctx.pages_manager.get_page_script_byte_code(str(self._page))
-File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/pages_manager.py", line 160, in get_page_script_byte_code
-    return self._script_cache.get_bytecode(script_path)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
-File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/script_cache.py", line 72, in get_bytecode
-    filebody = magic.add_magic(filebody, script_path)
-File "/home/adminuser/venv/lib/python3.14/site-packages/streamlit/runtime/scriptrunner/magic.py", line 45, in add_magic
-    tree = ast.parse(code, script_path, "exec")
-File "/usr/local/lib/python3.14/ast.py", line 46, in parse
-    return compile(source, filename, mode, flags,
-                   _feature_version=feature_version, optimize=optimize)
+import os
+import streamlit as st
+import pandas as pd
+
+from modules.ui import render_header
+from modules.auth import require_login, logout_button
+import modules.google_sheets as gs
+
+from modules.quote_logic import (
+    generate_quote_number,
+    generate_revision_quote_number,
+    calculate_totals,
+    save_quote_json,
+    load_saved_quotes,
+    load_quote_json,
+)
+
+from modules.pdf_generator import generate_pdf
+
+
+st.set_page_config(
+    page_title="Create Quote",
+    layout="wide"
+)
+
+current_user = require_login()
+
+render_header()
+
+st.sidebar.success(f"Logged in as: {current_user.get('Name', '')}")
+logout_button()
+
+st.sidebar.divider()
+
+if st.sidebar.button("🔄 Refresh Google Sheets", use_container_width=True):
+    st.cache_data.clear()
+    st.sidebar.success("Google Sheet data refreshed")
+    st.rerun()
+
+
+os.makedirs("output/PDFs", exist_ok=True)
+os.makedirs("output/quotes", exist_ok=True)
+
+
+@st.cache_data(ttl=300)
+def get_cached_products():
+    return gs.load_products()
+
+
+@st.cache_data(ttl=300)
+def get_cached_terms():
+    return gs.load_terms()
+
+
+@st.cache_data(ttl=300)
+def get_cached_templates():
+    return gs.load_solution_templates()
+
+
+def safe_text(value):
+    if value is None:
+        return ""
+    return str(value)
+
+
+def safe_float(value, default=0):
+    try:
+        if value is None or value == "":
+            return default
+
+        return float(
+            str(value)
+            .replace("R", "")
+            .replace(",", "")
+            .strip()
+        )
+
+    except Exception:
+        return default
+
+
+defaults = {
+    "quote_items": [],
+    "loaded_quote_number": "",
+    "base_quote_number": "",
+    "revision_mode": False,
+    "dashboard_template_loaded": False,
+    "current_quote_number": "",
+    "customer_name": "",
+    "company_name": "",
+    "site_name": "",
+    "salesperson": safe_text(current_user.get("Name", "")),
+    "salesperson_phone": safe_text(current_user.get("Phone", "")),
+    "salesperson_email": safe_text(current_user.get("Email", "")),
+}
+
+for key, value in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
+
+
+try:
+    products_df = get_cached_products()
+    terms = get_cached_terms()
+    templates_df = get_cached_templates()
+
+except Exception as e:
+    import traceback
+    st.error(str(e))
+    st.code(traceback.format_exc())
+    st.stop()
+
+
+if products_df.empty:
+    st.error("No products found in Google Sheet.")
+    st.stop()
+
+
+required_columns = [
+    "Identification",
+    "Short Name",
+    "Description",
+    "Selling Price",
+    "Billing",
+    "Final Cost before profit"
+]
+
+missing_columns = [
+    col for col in required_columns
+    if col not in products_df.columns
+]
+
+if missing_columns:
+    st.error(f"Missing columns in Products sheet: {missing_columns}")
+    st.write("Current columns found:")
+    st.write(list(products_df.columns))
+    st.stop()
+
+
+products_df["Identification"] = (
+    products_df["Identification"]
+    .fillna("General")
+    .astype(str)
+    .str.strip()
+    .replace("", "General")
+)
+
+products_df["Short Name"] = (
+    products_df["Short Name"]
+    .fillna("")
+    .astype(str)
+    .str.strip()
+)
+
+products_df["Description"] = (
+    products_df["Description"]
+    .fillna("")
+    .astype(str)
+    .str.strip()
+)
+
+products_df["Billing"] = (
+    products_df["Billing"]
+    .fillna("")
+    .astype(str)
+    .str.strip()
+)
+
+products_df["Selling Price"] = (
+    products_df["Selling Price"]
+    .astype(str)
+    .str.replace(",", "", regex=False)
+    .str.replace("R", "", regex=False)
+    .str.strip()
+)
+
+products_df["Selling Price"] = pd.to_numeric(
+    products_df["Selling Price"],
+    errors="coerce"
+).fillna(0)
+
+products_df["Final Cost before profit"] = (
+    products_df["Final Cost before profit"]
+    .astype(str)
+    .str.replace(",", "", regex=False)
+    .str.replace("R", "", regex=False)
+    .str.strip()
+)
+
+products_df["Final Cost before profit"] = pd.to_numeric(
+    products_df["Final Cost before profit"],
+    errors="coerce"
+).fillna(0)
 
 def calculate_line_values(product, qty, discount):
     unit_price = float(product["Selling Price"])
@@ -280,6 +451,7 @@ def load_template_into_quote(template_name):
             "These template items were not found in Products sheet: "
             + ", ".join(missing_items)
         )
+
 query_template = st.query_params.get("template", "")
 session_template = st.session_state.get("selected_template_from_dashboard", "")
 
@@ -533,6 +705,7 @@ if st.button("Add To Quote"):
 
     st.success("Product added")
     st.rerun()
+
 st.header("Quote Summary")
 
 if st.session_state.quote_items:
@@ -836,4 +1009,4 @@ if st.session_state.quote_items:
                 st.code(traceback.format_exc())
 
 else:
-    st.info("No products added yet.")
+    st.info("No products added yet.")            
