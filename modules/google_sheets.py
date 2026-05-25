@@ -308,3 +308,44 @@ def load_users():
         st.error(f"User load error: {e}")
 
         return pd.DataFrame()        
+
+def save_approval_request(
+    quote_number,
+    customer,
+    company,
+    salesperson,
+    salesperson_email,
+    quote_total,
+    approval_limit
+):
+
+    try:
+
+        sheet = client.open(
+            SPREADSHEET_NAME
+        ).worksheet("ApprovalRequests")
+
+        from datetime import datetime
+
+        sheet.append_row([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            quote_number,
+            customer,
+            company,
+            salesperson,
+            salesperson_email,
+            quote_total,
+            approval_limit,
+            "Pending",
+            "",
+            "",
+            ""
+        ])
+
+        return True
+
+    except Exception as e:
+
+        st.error(f"Approval request save error: {e}")
+
+        return False

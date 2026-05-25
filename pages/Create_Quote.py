@@ -942,9 +942,28 @@ if st.session_state.quote_items:
 
             if not approve_quote:
 
-                st.error(
-                    "This quote cannot be generated until it is approved."
+                approval_saved = gs.save_approval_request(
+                    quote_number=quote_number,
+                    customer=customer_name,
+                    company=company_name,
+                    salesperson=salesperson,
+                    salesperson_email=salesperson_email,
+                    quote_total=grand_total,
+                    approval_limit=user_approval_limit
                 )
+
+                if approval_saved:
+
+                    st.error(
+                        "This quote exceeds your approval limit. "
+                        "An approval request has been submitted."
+                    )
+
+                else:
+
+                    st.error(
+                        "Approval request could not be submitted."
+                    )
 
                 st.stop()
 
