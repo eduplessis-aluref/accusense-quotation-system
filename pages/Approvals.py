@@ -1,5 +1,12 @@
 import streamlit as st
 import pandas as pd
+import modules.google_sheets as gs
+
+st.write("Google Sheets module file:", gs.__file__)
+st.write(
+    "Has load_approval_requests:",
+    hasattr(gs, "load_approval_requests")
+)
 
 from modules.ui import render_header
 from modules.auth import require_login, logout_button
