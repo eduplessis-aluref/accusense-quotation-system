@@ -12,6 +12,17 @@ st.set_page_config(
 
 current_user = require_login()
 
+can_view_sales_report = (
+    str(current_user.get("Can View Sales Report", "No"))
+    .strip()
+    .lower()
+    == "yes"
+)
+
+if not can_view_sales_report:
+    st.error("Currently not available.")
+    st.stop()
+
 render_header()
 
 st.sidebar.success(f"Logged in as: {current_user.get('Name', '')}")
