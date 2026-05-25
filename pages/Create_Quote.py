@@ -314,11 +314,11 @@ def quote_already_saved(quote_number):
     return os.path.exists(json_path) or os.path.exists(pdf_path)
 
 
-def add_auto_monitoring_fee(df):
+def add_annual_monitoring_fee(df):
     df = df.copy()
 
     df = df[
-        df["Product"].astype(str).str.strip() != "AUTO_MONITORING"
+        df["Product"].astype(str).str.strip() != "Annual_Monitoring"
     ].copy()
 
     sensor_rows = df[
@@ -362,7 +362,7 @@ def add_auto_monitoring_fee(df):
 
     monitoring_row = {
         "Identification": "Service",
-        "Product": "AUTO_MONITORING",
+        "Product": "Annual_Monitoring",
         "Description": (
             f"Monitoring Fee - {int(total_sensors)} Sensors "
             f"(12 Months Prepaid)"
@@ -377,7 +377,7 @@ def add_auto_monitoring_fee(df):
         "Profit": monitoring_profit,
         "Profit Margin %": monitoring_margin,
         "Locked": "Yes",
-        "Template": "Auto Monitoring"
+        "Template": "Annual Monitoring"
     }
 
     df = pd.concat(
@@ -757,7 +757,7 @@ if st.session_state.quote_items:
     quote_df = normalise_quote_df(quote_df)
 
     quote_df = quote_df[
-        quote_df["Product"].astype(str).str.strip() != "AUTO_MONITORING"
+        quote_df["Product"].astype(str).str.strip() != "Annual_Monitoring"
     ].copy()
 
     edited_df = st.data_editor(
@@ -844,11 +844,11 @@ if st.session_state.quote_items:
 
     st.session_state.quote_items = edited_df.to_dict("records")
 
-    final_df = add_auto_monitoring_fee(edited_df)
+    final_df = add_annual_monitoring_fee(edited_df)
     final_df = recalculate_quote_df(final_df)
 
     if len(final_df) != len(edited_df):
-        st.subheader("Final Quote Lines Including Automatic Fees")
+        st.subheader("Final Quote Lines Including Annual Monitoring")
         st.dataframe(
             final_df,
             use_container_width=True,
