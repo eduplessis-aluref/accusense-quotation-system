@@ -349,3 +349,73 @@ def save_approval_request(
         st.error(f"Approval request save error: {e}")
 
         return False
+
+def load_approval_requests():
+
+    sheet = client.open(
+        SPREADSHEET_NAME
+    ).worksheet("ApprovalRequests")
+
+    data = sheet.get_all_records()
+
+    return pd.DataFrame(data)
+
+
+def update_approval_status(
+    row_number,
+    status,
+    approved_by,
+    notes=""
+):
+
+    from datetime import datetime
+
+    sheet = client.open(
+        SPREADSHEET_NAME
+    ).worksheet("ApprovalRequests")
+
+    sheet.update_cell(row_number, 9, status)
+    sheet.update_cell(row_number, 10, approved_by)
+    sheet.update_cell(
+        row_number,
+        11,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
+    sheet.update_cell(row_number, 12, notes)
+
+    return True
+
+def load_approval_requests():
+
+    sheet = client.open(
+        SPREADSHEET_NAME
+    ).worksheet("ApprovalRequests")
+
+    data = sheet.get_all_records()
+
+    return pd.DataFrame(data)
+
+
+def update_approval_status(
+    row_number,
+    status,
+    approved_by,
+    notes=""
+):
+
+    from datetime import datetime
+
+    sheet = client.open(
+        SPREADSHEET_NAME
+    ).worksheet("ApprovalRequests")
+
+    sheet.update_cell(row_number, 9, status)
+    sheet.update_cell(row_number, 10, approved_by)
+    sheet.update_cell(
+        row_number,
+        11,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
+    sheet.update_cell(row_number, 12, notes)
+
+    return True    
