@@ -18,10 +18,6 @@ from modules.quote_logic import (
 from modules.pdf_generator import generate_pdf
 
 
-# =====================================================
-# PAGE SETUP
-# =====================================================
-
 st.set_page_config(
     page_title="Create Quote",
     layout="wide"
@@ -46,10 +42,6 @@ os.makedirs("output/PDFs", exist_ok=True)
 os.makedirs("output/quotes", exist_ok=True)
 
 
-# =====================================================
-# CACHED GOOGLE SHEETS LOADERS
-# =====================================================
-
 @st.cache_data(ttl=300)
 def get_cached_products():
     return gs.load_products()
@@ -65,14 +57,21 @@ def get_cached_templates():
     return gs.load_solution_templates()
 
 
-# =====================================================
-# SESSION STATE DEFAULTS
-# =====================================================
-
 def safe_text(value):
     if value is None:
         return ""
     return str(value)
+
+
+def safe_float(value, default=0):
+    try:
+        if value is None or value == "":
+            return default
+
+        return float(str(value).replace("R", "").replace(",", "").strip())
+
+    except Exception:
+        return default
 
 
 defaults = {
@@ -95,10 +94,6 @@ for key, value in defaults.items():
         st.session_state[key] = value
 
 
-# =====================================================
-# LOAD GOOGLE SHEET DATA
-# =====================================================
-
 try:
     products_df = get_cached_products()
     terms = get_cached_terms()
@@ -115,10 +110,6 @@ if products_df.empty:
     st.error("No products found in Google Sheet.")
     st.stop()
 
-
-# =====================================================
-# VALIDATE PRODUCT SHEET COLUMNS
-# =====================================================
 
 required_columns = [
     "Identification",
@@ -140,10 +131,6 @@ if missing_columns:
     st.write(list(products_df.columns))
     st.stop()
 
-
-# =====================================================
-# CLEAN PRODUCT DATA
-# =====================================================
 
 products_df["Identification"] = (
     products_df["Identification"]
@@ -200,10 +187,6 @@ products_df["Final Cost before profit"] = pd.to_numeric(
     errors="coerce"
 ).fillna(0)
 
-
-# =====================================================
-# HELPER FUNCTIONS
-# =====================================================
 
 def calculate_line_values(product, qty, discount):
     unit_price = float(product["Selling Price"])
@@ -387,7 +370,7 @@ def add_annual_monitoring_fee(df):
 
     return df
 
-def load_template_into_quote(template_name):
+    def load_template_into_quote(template_name):
     if templates_df.empty:
         st.warning("No solution templates found.")
         return
@@ -465,10 +448,6 @@ def load_template_into_quote(template_name):
         )
 
 
-# =====================================================
-# LOAD TEMPLATE FROM DASHBOARD / QUERY PARAMS
-# =====================================================
-
 query_template = st.query_params.get("template", "")
 session_template = st.session_state.get("selected_template_from_dashboard", "")
 
@@ -481,10 +460,6 @@ if template_to_load and not st.session_state.dashboard_template_loaded:
     if "selected_template_from_dashboard" in st.session_state:
         del st.session_state.selected_template_from_dashboard
 
-
-# =====================================================
-# SIDEBAR - QUOTE OPTIONS
-# =====================================================
 
 st.sidebar.header("Quote Options")
 
@@ -535,6 +510,8 @@ if st.sidebar.button("Load Quote"):
         if not base_quote_number:
             if "-REV" in loaded_quote_number:
                 base_quote_number = loaded_quote_number.split("-REV")[0]
+            elif "-R" in loaded_quote_number:
+                base_quote_number = loaded_quote_number.rsplit("-R", 1)[0]
             else:
                 base_quote_number = loaded_quote_number
 
@@ -545,10 +522,6 @@ if st.sidebar.button("Load Quote"):
         st.success(f"Loaded quote: {selected_saved_quote}")
         st.rerun()
 
-
-# =====================================================
-# SIDEBAR - CUSTOMER DETAILS
-# =====================================================
 
 st.sidebar.header("Customer Details")
 
@@ -567,10 +540,6 @@ site_name = st.sidebar.text_input(
     key="site_name"
 )
 
-
-# =====================================================
-# SIDEBAR - SALESPERSON DETAILS
-# =====================================================
 
 st.session_state.salesperson = safe_text(st.session_state.salesperson)
 st.session_state.salesperson_phone = safe_text(st.session_state.salesperson_phone)
@@ -594,10 +563,6 @@ salesperson_email = st.sidebar.text_input(
 )
 
 
-# =====================================================
-# QUOTE NUMBER
-# =====================================================
-
 if st.session_state.revision_mode:
     if not st.session_state.current_quote_number:
         quote_number, revision = generate_revision_quote_number(
@@ -618,10 +583,6 @@ else:
 st.sidebar.write("### Quote Number")
 st.sidebar.success(quote_number)
 
-
-# =====================================================
-# LOAD SOLUTION TEMPLATE
-# =====================================================
 
 st.header("Load Solution Template")
 
@@ -647,10 +608,6 @@ else:
         "No solution templates found. Add a SolutionTemplates tab in Google Sheets."
     )
 
-
-# =====================================================
-# ADD PRODUCTS MANUALLY
-# =====================================================
 
 st.header("Add Products Manually")
 
@@ -743,13 +700,9 @@ if st.button("Add To Quote"):
     })
 
     st.success("Product added")
-    st.rerun()    
+    st.rerun()
 
-# =====================================================
-# QUOTE SUMMARY
-# =====================================================
-
-st.header("Quote Summary")
+    st.header("Quote Summary")
 
 if st.session_state.quote_items:
 
@@ -885,6 +838,51 @@ if st.session_state.quote_items:
 
 
     # =====================================================
+    # APPROVAL LOGIC
+    # =====================================================
+
+    user_approval_limit = safe_float(
+        current_user.get("Approval Limit", 0),
+        0
+    )
+
+    can_approve = (
+        str(current_user.get("Can Approve", "No"))
+        .strip()
+        .lower()
+        == "yes"
+    )
+
+    approval_required = grand_total > user_approval_limit
+
+    approve_quote = False
+
+    if approval_required:
+
+        st.error(
+            f"Approval required. "
+            f"Quote total is R {grand_total:,.2f}, "
+            f"but your approval limit is R {user_approval_limit:,.2f}."
+        )
+
+        if can_approve:
+
+            st.success("You are authorised to approve this quote.")
+
+            approve_quote = st.checkbox(
+                "Approve this quote"
+            )
+
+        else:
+
+            st.warning("You are not authorised to approve this quote.")
+
+    else:
+
+        approve_quote = True
+
+
+    # =====================================================
     # GENERATE / SAVE PDF
     # =====================================================
 
@@ -918,7 +916,16 @@ if st.session_state.quote_items:
 
         if st.button("Generate / Save PDF"):
 
+            if not approve_quote:
+
+                st.error(
+                    "This quote cannot be generated until it is approved."
+                )
+
+                st.stop()
+
             try:
+
                 st.info("Starting PDF generation...")
 
                 pdf_path = generate_pdf(
@@ -937,7 +944,9 @@ if st.session_state.quote_items:
                     terms=terms
                 )
 
-                st.success(f"PDF generated successfully: {pdf_path}")
+                st.success(
+                    f"PDF generated successfully: {pdf_path}"
+                )
 
                 saved_json_path = save_quote_json(
                     quote_number=quote_number,
@@ -955,7 +964,9 @@ if st.session_state.quote_items:
                     pdf_path=pdf_path
                 )
 
-                st.success(f"Quote JSON saved successfully: {saved_json_path}")
+                st.success(
+                    f"Quote JSON saved successfully: {saved_json_path}"
+                )
 
                 st.write("PDF saved to:")
                 st.code(pdf_path)
@@ -964,17 +975,22 @@ if st.session_state.quote_items:
                 st.code(saved_json_path)
 
                 if os.path.exists(pdf_path):
+
                     with open(pdf_path, "rb") as f:
+
                         st.download_button(
                             "⬇ Download PDF",
                             f,
                             file_name=f"{quote_number}.pdf",
                             mime="application/pdf"
                         )
+
                 else:
+
                     st.error("PDF file was not found after generation.")
 
             except Exception as e:
+
                 import traceback
 
                 st.error("Quote save failed.")
@@ -983,3 +999,4 @@ if st.session_state.quote_items:
 
 else:
     st.info("No products added yet.")
+    
