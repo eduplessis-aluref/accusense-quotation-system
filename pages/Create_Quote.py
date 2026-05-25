@@ -508,39 +508,6 @@ else:
 st.sidebar.write("### Quote Number")
 st.sidebar.success(quote_number)
 
-st.sidebar.divider()
-
-if st.sidebar.button("📋 My Pending Quotes", use_container_width=True):
-    st.session_state.show_my_pending_quotes = True
-    st.rerun()
-
-
-if st.session_state.get("show_my_pending_quotes", False):
-
-    st.header("My Pending Quotes")
-
-    try:
-        approvals_df = gs.load_approval_requests()
-    except Exception as e:
-        st.error(f"Could not load pending quotes: {e}")
-        approvals_df = pd.DataFrame()
-
-    if approvals_df.empty:
-        st.info("You have no pending quotes.")
-    else:
-        my_pending_df = approvals_df[
-            (
-                approvals_df["Salesperson Email"].astype(str).str.lower()
-                == salesperson_email.lower()
-            )
-            & (approvals_df["Status"].astype(str).str.lower() == "pending")
-        ]
-
-        if my_pending_df.empty:
-            st.info("You have no pending quotes.")
-        else:
-            st.dataframe(my_pending_df, use_container_width=True, hide_index=True)
-
 st.header("Load Solution Template")
 
 if not templates_df.empty:
