@@ -267,3 +267,44 @@ def save_quote(
         print(f"Save quote error: {e}")
 
         return False
+
+def load_users():
+
+    try:
+
+        sheet = client.open(
+            SPREADSHEET_NAME
+        ).worksheet("Users")
+
+        data = sheet.get_all_values()
+
+        if not data:
+            return pd.DataFrame()
+
+        headers = [
+            str(h).strip()
+            for h in data[0]
+        ]
+
+        rows = data[1:]
+
+        df = pd.DataFrame(
+            rows,
+            columns=headers
+        )
+
+        df = df.dropna(how="all")
+
+        df.columns = (
+            df.columns
+            .astype(str)
+            .str.strip()
+        )
+
+        return df
+
+    except Exception as e:
+
+        st.error(f"User load error: {e}")
+
+        return pd.DataFrame()        
