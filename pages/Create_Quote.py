@@ -17,11 +17,7 @@ from modules.quote_logic import (
 
 from modules.pdf_generator import generate_pdf
 
-
-st.set_page_config(
-    page_title="Create Quote",
-    layout="wide"
-)
+st.set_page_config(page_title="Create Quote", layout="wide")
 
 current_user = require_login()
 
@@ -68,12 +64,7 @@ def safe_float(value, default=0):
         if value is None or value == "":
             return default
 
-        return float(
-            str(value)
-            .replace("R", "")
-            .replace(",", "")
-            .strip()
-        )
+        return float(str(value).replace("R", "").replace(",", "").strip())
 
     except Exception:
         return default
@@ -107,6 +98,7 @@ try:
 
 except Exception as e:
     import traceback
+
     st.error(str(e))
     st.code(traceback.format_exc())
     st.stop()
@@ -123,13 +115,10 @@ required_columns = [
     "Description",
     "Selling Price",
     "Billing",
-    "Final Cost before profit"
+    "Final Cost before profit",
 ]
 
-missing_columns = [
-    col for col in required_columns
-    if col not in products_df.columns
-]
+missing_columns = [col for col in required_columns if col not in products_df.columns]
 
 if missing_columns:
     st.error(f"Missing columns in Products sheet: {missing_columns}")
@@ -146,26 +135,13 @@ products_df["Identification"] = (
     .replace("", "General")
 )
 
-products_df["Short Name"] = (
-    products_df["Short Name"]
-    .fillna("")
-    .astype(str)
-    .str.strip()
-)
+products_df["Short Name"] = products_df["Short Name"].fillna("").astype(str).str.strip()
 
 products_df["Description"] = (
-    products_df["Description"]
-    .fillna("")
-    .astype(str)
-    .str.strip()
+    products_df["Description"].fillna("").astype(str).str.strip()
 )
 
-products_df["Billing"] = (
-    products_df["Billing"]
-    .fillna("")
-    .astype(str)
-    .str.strip()
-)
+products_df["Billing"] = products_df["Billing"].fillna("").astype(str).str.strip()
 
 products_df["Selling Price"] = (
     products_df["Selling Price"]
@@ -176,8 +152,7 @@ products_df["Selling Price"] = (
 )
 
 products_df["Selling Price"] = pd.to_numeric(
-    products_df["Selling Price"],
-    errors="coerce"
+    products_df["Selling Price"], errors="coerce"
 ).fillna(0)
 
 products_df["Final Cost before profit"] = (
@@ -189,9 +164,9 @@ products_df["Final Cost before profit"] = (
 )
 
 products_df["Final Cost before profit"] = pd.to_numeric(
-    products_df["Final Cost before profit"],
-    errors="coerce"
+    products_df["Final Cost before profit"], errors="coerce"
 ).fillna(0)
+
 
 def calculate_line_values(product, qty, discount):
     unit_price = float(product["Selling Price"])
@@ -268,36 +243,23 @@ def recalculate_quote_df(df):
     df["Unit Price"] = pd.to_numeric(df["Unit Price"], errors="coerce").fillna(0)
     df["Cost Price"] = pd.to_numeric(df["Cost Price"], errors="coerce").fillna(0)
 
-    df["Total"] = (
-        df["Qty"]
-        * df["Unit Price"]
-        * (1 - df["Discount"] / 100)
-    )
+    df["Total"] = df["Qty"] * df["Unit Price"] * (1 - df["Discount"] / 100)
 
     df["Line Cost"] = df["Qty"] * df["Cost Price"]
     df["Profit"] = df["Total"] - df["Line Cost"]
 
     df["Profit Margin %"] = df.apply(
-        lambda row: (row["Profit"] / row["Total"] * 100)
-        if row["Total"] > 0 else 0,
-        axis=1
+        lambda row: (row["Profit"] / row["Total"] * 100) if row["Total"] > 0 else 0,
+        axis=1,
     )
 
     return df
 
 
 def quote_already_saved(quote_number):
-    json_path = os.path.join(
-        "output",
-        "quotes",
-        f"{quote_number}.json"
-    )
+    json_path = os.path.join("output", "quotes", f"{quote_number}.json")
 
-    pdf_path = os.path.join(
-        "output",
-        "PDFs",
-        f"{quote_number}.pdf"
-    )
+    pdf_path = os.path.join("output", "PDFs", f"{quote_number}.pdf")
 
     return os.path.exists(json_path) or os.path.exists(pdf_path)
 
@@ -305,15 +267,10 @@ def quote_already_saved(quote_number):
 def add_annual_monitoring_fee(df):
     df = df.copy()
 
-    df = df[
-        df["Product"].astype(str).str.strip() != "Annual_Monitoring"
-    ].copy()
+    df = df[df["Product"].astype(str).str.strip() != "Annual_Monitoring"].copy()
 
     sensor_rows = df[
-        df["Identification"]
-        .astype(str)
-        .str.lower()
-        .str.contains("sensor", na=False)
+        df["Identification"].astype(str).str.lower().str.contains("sensor", na=False)
     ]
 
     total_sensors = float(sensor_rows["Qty"].sum())
@@ -322,10 +279,7 @@ def add_annual_monitoring_fee(df):
         return df
 
     monitoring_products = products_df[
-        products_df["Short Name"]
-        .astype(str)
-        .str.strip()
-        == "Monitoring Fee"
+        products_df["Short Name"].astype(str).str.strip() == "Monitoring Fee"
     ]
 
     if monitoring_products.empty:
@@ -352,8 +306,7 @@ def add_annual_monitoring_fee(df):
         "Identification": "Service",
         "Product": "Annual_Monitoring",
         "Description": (
-            f"Monitoring Fee - {int(total_sensors)} Sensors "
-            f"(12 Months Prepaid)"
+            f"Monitoring Fee - {int(total_sensors)} Sensors " f"(12 Months Prepaid)"
         ),
         "Billing": "12 Months Prepaid",
         "Qty": 1,
@@ -365,24 +318,20 @@ def add_annual_monitoring_fee(df):
         "Profit": monitoring_profit,
         "Profit Margin %": monitoring_margin,
         "Locked": "Yes",
-        "Template": "Annual Monitoring"
+        "Template": "Annual Monitoring",
     }
 
-    df = pd.concat(
-        [df, pd.DataFrame([monitoring_row])],
-        ignore_index=True
-    )
+    df = pd.concat([df, pd.DataFrame([monitoring_row])], ignore_index=True)
 
     return df
 
-    def load_template_into_quote(template_name):
+
+def load_template_into_quote(template_name):
     if templates_df.empty:
         st.warning("No solution templates found.")
         return
 
-    template_lines = templates_df[
-        templates_df["Template Name"] == template_name
-    ].copy()
+    template_lines = templates_df[templates_df["Template Name"] == template_name].copy()
 
     if template_lines.empty:
         st.warning(f"Template not found: {template_name}")
@@ -399,19 +348,8 @@ def add_annual_monitoring_fee(df):
         locked = str(template_row["Locked"]).strip()
 
         matched_products = products_df[
-            (
-                products_df["Identification"]
-                .astype(str)
-                .str.strip()
-                == identification
-            )
-            &
-            (
-                products_df["Short Name"]
-                .astype(str)
-                .str.strip()
-                == short_name
-            )
+            (products_df["Identification"].astype(str).str.strip() == identification)
+            & (products_df["Short Name"].astype(str).str.strip() == short_name)
         ]
 
         if matched_products.empty:
@@ -424,22 +362,24 @@ def add_annual_monitoring_fee(df):
             calculate_line_values(product, qty, discount)
         )
 
-        st.session_state.quote_items.append({
-            "Identification": product["Identification"],
-            "Product": product["Short Name"],
-            "Description": product["Description"],
-            "Billing": product["Billing"],
-            "Qty": qty,
-            "Discount": discount,
-            "Unit Price": unit_price,
-            "Cost Price": cost_price,
-            "Line Cost": line_cost,
-            "Total": line_total,
-            "Profit": profit,
-            "Profit Margin %": profit_margin,
-            "Locked": locked,
-            "Template": template_name
-        })
+        st.session_state.quote_items.append(
+            {
+                "Identification": product["Identification"],
+                "Product": product["Short Name"],
+                "Description": product["Description"],
+                "Billing": product["Billing"],
+                "Qty": qty,
+                "Discount": discount,
+                "Unit Price": unit_price,
+                "Cost Price": cost_price,
+                "Line Cost": line_cost,
+                "Total": line_total,
+                "Profit": profit,
+                "Profit Margin %": profit_margin,
+                "Locked": locked,
+                "Template": template_name,
+            }
+        )
 
         added_count += 1
 
@@ -481,10 +421,7 @@ if st.sidebar.button("Clear Current Quote"):
 
 saved_quotes = load_saved_quotes()
 
-selected_saved_quote = st.sidebar.selectbox(
-    "Load Existing Quote",
-    [""] + saved_quotes
-)
+selected_saved_quote = st.sidebar.selectbox("Load Existing Quote", [""] + saved_quotes)
 
 if st.sidebar.button("Load Quote"):
     if selected_saved_quote:
@@ -531,20 +468,11 @@ if st.sidebar.button("Load Quote"):
 
 st.sidebar.header("Customer Details")
 
-customer_name = st.sidebar.text_input(
-    "Customer Name",
-    key="customer_name"
-)
+customer_name = st.sidebar.text_input("Customer Name", key="customer_name")
 
-company_name = st.sidebar.text_input(
-    "Company",
-    key="company_name"
-)
+company_name = st.sidebar.text_input("Company", key="company_name")
 
-site_name = st.sidebar.text_input(
-    "Site",
-    key="site_name"
-)
+site_name = st.sidebar.text_input("Site", key="site_name")
 
 
 st.session_state.salesperson = safe_text(st.session_state.salesperson)
@@ -553,20 +481,11 @@ st.session_state.salesperson_email = safe_text(st.session_state.salesperson_emai
 
 st.sidebar.header("Salesperson Details")
 
-salesperson = st.sidebar.text_input(
-    "Salesperson Name",
-    key="salesperson"
-)
+salesperson = st.sidebar.text_input("Salesperson Name", key="salesperson")
 
-salesperson_phone = st.sidebar.text_input(
-    "Salesperson Phone",
-    key="salesperson_phone"
-)
+salesperson_phone = st.sidebar.text_input("Salesperson Phone", key="salesperson_phone")
 
-salesperson_email = st.sidebar.text_input(
-    "Salesperson Email",
-    key="salesperson_email"
-)
+salesperson_email = st.sidebar.text_input("Salesperson Email", key="salesperson_email")
 
 
 if st.session_state.revision_mode:
@@ -611,44 +530,24 @@ if st.session_state.get("show_my_pending_quotes", False):
     else:
         my_pending_df = approvals_df[
             (
-                approvals_df["Salesperson Email"]
-                .astype(str)
-                .str.lower()
+                approvals_df["Salesperson Email"].astype(str).str.lower()
                 == salesperson_email.lower()
             )
-            &
-            (
-                approvals_df["Status"]
-                .astype(str)
-                .str.lower()
-                == "pending"
-            )
+            & (approvals_df["Status"].astype(str).str.lower() == "pending")
         ]
 
         if my_pending_df.empty:
             st.info("You have no pending quotes.")
         else:
-            st.dataframe(
-                my_pending_df,
-                use_container_width=True,
-                hide_index=True
-            )
+            st.dataframe(my_pending_df, use_container_width=True, hide_index=True)
 
 st.header("Load Solution Template")
 
 if not templates_df.empty:
 
-    template_names = sorted(
-        templates_df["Template Name"]
-        .dropna()
-        .astype(str)
-        .unique()
-    )
+    template_names = sorted(templates_df["Template Name"].dropna().astype(str).unique())
 
-    selected_template = st.selectbox(
-        "Select Solution Template",
-        [""] + template_names
-    )
+    selected_template = st.selectbox("Select Solution Template", [""] + template_names)
 
     if st.button("Load Template Into Quote") and selected_template:
         load_template_into_quote(selected_template)
@@ -657,44 +556,25 @@ if not templates_df.empty:
 else:
 
     st.info(
-        "No solution templates found. "
-        "Add a SolutionTemplates tab in Google Sheets."
+        "No solution templates found. " "Add a SolutionTemplates tab in Google Sheets."
     )
 
 
 st.header("Add Products Manually")
 
-category_list = sorted(
-    products_df["Identification"]
-    .dropna()
-    .astype(str)
-    .unique()
-)
+category_list = sorted(products_df["Identification"].dropna().astype(str).unique())
 
-selected_identification = st.selectbox(
-    "Select Main Category",
-    category_list
-)
+selected_identification = st.selectbox("Select Main Category", category_list)
 
 category_df = products_df[
     products_df["Identification"] == selected_identification
 ].copy()
 
-product_list = sorted(
-    category_df["Short Name"]
-    .dropna()
-    .astype(str)
-    .unique()
-)
+product_list = sorted(category_df["Short Name"].dropna().astype(str).unique())
 
-selected_short_name = st.selectbox(
-    "Select Product",
-    product_list
-)
+selected_short_name = st.selectbox("Select Product", product_list)
 
-selected_rows = category_df[
-    category_df["Short Name"] == selected_short_name
-]
+selected_rows = category_df[category_df["Short Name"] == selected_short_name]
 
 if selected_rows.empty:
     st.warning("Selected product not found.")
@@ -706,21 +586,12 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
 
-    qty = st.number_input(
-        "Quantity",
-        min_value=1,
-        value=1,
-        step=1
-    )
+    qty = st.number_input("Quantity", min_value=1, value=1, step=1)
 
 with col2:
 
     discount = st.number_input(
-        "Discount %",
-        min_value=0.0,
-        max_value=100.0,
-        value=0.0,
-        step=0.5
+        "Discount %", min_value=0.0, max_value=100.0, value=0.0, step=0.5
     )
 
 with col3:
@@ -739,22 +610,24 @@ if st.button("Add To Quote"):
         calculate_line_values(selected, qty, discount)
     )
 
-    st.session_state.quote_items.append({
-        "Identification": selected["Identification"],
-        "Product": selected["Short Name"],
-        "Description": selected["Description"],
-        "Billing": selected["Billing"],
-        "Qty": qty,
-        "Discount": discount,
-        "Unit Price": unit_price,
-        "Cost Price": cost_price,
-        "Line Cost": line_cost,
-        "Total": line_total,
-        "Profit": profit,
-        "Profit Margin %": profit_margin,
-        "Locked": "No",
-        "Template": ""
-    })
+    st.session_state.quote_items.append(
+        {
+            "Identification": selected["Identification"],
+            "Product": selected["Short Name"],
+            "Description": selected["Description"],
+            "Billing": selected["Billing"],
+            "Qty": qty,
+            "Discount": discount,
+            "Unit Price": unit_price,
+            "Cost Price": cost_price,
+            "Line Cost": line_cost,
+            "Total": line_total,
+            "Profit": profit,
+            "Profit Margin %": profit_margin,
+            "Locked": "No",
+            "Template": "",
+        }
+    )
 
     st.success("Product added")
     st.rerun()
@@ -769,17 +642,10 @@ if st.session_state.quote_items:
     quote_df = normalise_quote_df(quote_df)
 
     quote_df = quote_df[
-        quote_df["Product"]
-        .astype(str)
-        .str.strip()
-        != "Annual_Monitoring"
+        quote_df["Product"].astype(str).str.strip() != "Annual_Monitoring"
     ].copy()
 
-    edited_df = st.data_editor(
-        quote_df,
-        use_container_width=True,
-        num_rows="dynamic"
-    )
+    edited_df = st.data_editor(quote_df, use_container_width=True, num_rows="dynamic")
 
     edited_df = recalculate_quote_df(edited_df)
 
@@ -802,22 +668,13 @@ if st.session_state.quote_items:
     with col3:
         st.metric("Grand Total", f"R {grand_total:,.2f}")
 
-
     # =====================================================
     # APPROVAL LOGIC
     # =====================================================
 
-    can_approve = (
-        str(current_user.get("Can Approve", "No"))
-        .strip()
-        .lower()
-        == "yes"
-    )
+    can_approve = str(current_user.get("Can Approve", "No")).strip().lower() == "yes"
 
-    approval_limit_raw = str(
-        current_user.get("Approval Limit")
-        or ""
-    ).strip()
+    approval_limit_raw = str(current_user.get("Approval Limit") or "").strip()
 
     if approval_limit_raw == "":
 
@@ -828,10 +685,7 @@ if st.session_state.quote_items:
 
     else:
 
-        user_approval_limit = safe_float(
-            approval_limit_raw,
-            0
-        )
+        user_approval_limit = safe_float(approval_limit_raw, 0)
 
     approval_required = grand_total > user_approval_limit
 
@@ -848,71 +702,47 @@ if st.session_state.quote_items:
 
         if can_approve:
 
-            approve_quote = st.checkbox(
-                "Approve this quote"
-            )
+            approve_quote = st.checkbox("Approve this quote")
 
         else:
 
-            st.warning(
-                "You are not authorised to approve this quote."
-            )
+            st.warning("You are not authorised to approve this quote.")
 
     else:
 
         approve_quote = True
 
-
-    approval_status = gs.get_quote_approval_status(
-        quote_number
-    )
+    approval_status = gs.get_quote_approval_status(quote_number)
 
     if approval_status:
 
-        status = str(
-            approval_status.get("Status", "")
-        ).strip().lower()
+        status = str(approval_status.get("Status", "")).strip().lower()
 
         if status == "pending":
 
-            st.warning(
-                "This quote is awaiting approval."
-            )
+            st.warning("This quote is awaiting approval.")
 
         elif status == "rejected":
 
-            st.error(
-                "This quote was rejected."
-            )
+            st.error("This quote was rejected.")
 
-            rejection_notes = approval_status.get(
-                "Notes",
-                ""
-            )
+            rejection_notes = approval_status.get("Notes", "")
 
             if rejection_notes:
 
-                st.write(
-                    f"Reason: {rejection_notes}"
-                )
+                st.write(f"Reason: {rejection_notes}")
 
         elif status == "approved":
 
             st.success(
-                f"Quote approved by "
-                f"{approval_status.get('Approved By', '')}"
+                f"Quote approved by " f"{approval_status.get('Approved By', '')}"
             )
 
-
-    already_saved = quote_already_saved(
-        quote_number
-    )
+    already_saved = quote_already_saved(quote_number)
 
     if already_saved:
 
-        st.warning(
-            "This quote has already been generated and saved."
-        )
+        st.warning("This quote has already been generated and saved.")
 
     else:
 
@@ -927,7 +757,7 @@ if st.session_state.quote_items:
                     salesperson=salesperson,
                     salesperson_email=salesperson_email,
                     quote_total=grand_total,
-                    approval_limit=user_approval_limit
+                    approval_limit=user_approval_limit,
                 )
 
                 if approval_saved:
@@ -939,9 +769,7 @@ if st.session_state.quote_items:
 
                 else:
 
-                    st.error(
-                        "Approval request could not be submitted."
-                    )
+                    st.error("Approval request could not be submitted.")
 
                 st.stop()
 
@@ -960,7 +788,7 @@ if st.session_state.quote_items:
                     subtotal=subtotal,
                     vat=vat,
                     total=grand_total,
-                    terms=terms
+                    terms=terms,
                 )
 
                 save_quote_json(
@@ -976,12 +804,10 @@ if st.session_state.quote_items:
                     subtotal=subtotal,
                     vat=vat,
                     total=grand_total,
-                    pdf_path=pdf_path
+                    pdf_path=pdf_path,
                 )
 
-                st.success(
-                    "Quote saved successfully."
-                )
+                st.success("Quote saved successfully.")
 
                 if os.path.exists(pdf_path):
 
@@ -991,7 +817,7 @@ if st.session_state.quote_items:
                             "⬇ Download PDF",
                             f,
                             file_name=f"{quote_number}.pdf",
-                            mime="application/pdf"
+                            mime="application/pdf",
                         )
 
             except Exception as e:
@@ -1003,4 +829,4 @@ if st.session_state.quote_items:
 
 else:
 
-    st.info("No products added yet.")            
+    st.info("No products added yet.")
