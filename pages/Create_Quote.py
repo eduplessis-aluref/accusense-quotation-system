@@ -841,9 +841,9 @@ if st.session_state.quote_items:
     )
 
 
-# =====================================================
+    # =====================================================
     # APPROVAL LOGIC
-# =====================================================
+    # =====================================================
 
     can_approve = (
         str(current_user.get("Can Approve", "No"))
@@ -909,6 +909,40 @@ if st.session_state.quote_items:
     # =====================================================
     # GENERATE / SAVE PDF
     # =====================================================
+
+    approval_status = gs.get_quote_approval_status(
+    quote_number
+    )
+
+    if approval_status:
+
+        status = str(
+            approval_status.get("Status", "")
+        ).strip().lower()
+
+        if status == "pending":
+
+            st.warning(
+                "This quote is awaiting approval."
+            )
+
+        elif status == "rejected":
+
+            st.error(
+                "This quote was rejected."
+            )
+
+            rejection_notes = approval_status.get("Notes", "")
+
+            if rejection_notes:
+                st.write(f"Reason: {rejection_notes}")
+
+        elif status == "approved":
+
+            st.success(
+                f"Quote approved by "
+                f"{approval_status.get('Approved By', '')}"
+            )
 
     already_saved = quote_already_saved(quote_number)
 

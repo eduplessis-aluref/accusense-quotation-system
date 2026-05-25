@@ -418,4 +418,39 @@ def update_approval_status(
     )
     sheet.update_cell(row_number, 12, notes)
 
-    return True    
+    return True   
+
+def get_quote_approval_status(quote_number):
+
+    try:
+
+        sheet = client.open(
+            SPREADSHEET_NAME
+        ).worksheet("ApprovalRequests")
+
+        data = sheet.get_all_records()
+
+        df = pd.DataFrame(data)
+
+        if df.empty:
+            return None
+
+        matches = df[
+            df["Quote Number"].astype(str) == str(quote_number)
+        ]
+
+        if matches.empty:
+            return None
+
+        latest = matches.iloc[-1]
+
+        return {
+            "Status": latest.get("Status", ""),
+            "Approved By": latest.get("Approved By", ""),
+            "Approved Date": latest.get("Approved Date", ""),
+            "Notes": latest.get("Notes", "")
+        }
+
+    except Exception:
+
+        return None     
