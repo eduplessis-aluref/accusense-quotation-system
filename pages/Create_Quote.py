@@ -843,7 +843,7 @@ if st.session_state.quote_items:
 
 # =====================================================
     # APPROVAL LOGIC
-    # =====================================================
+# =====================================================
 
     can_approve = (
         str(current_user.get("Can Approve", "No"))
@@ -853,7 +853,11 @@ if st.session_state.quote_items:
     )
 
     approval_limit_raw = str(
-        current_user.get("Approval Limit", "")
+        current_user.get("Approval Limit")
+        or current_user.get("Quote Limit")
+        or current_user.get("Quote Level")
+        or current_user.get("ApprovalLimit")
+        or ""
     ).strip()
 
     if approval_limit_raw == "":
