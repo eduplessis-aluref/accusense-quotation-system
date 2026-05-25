@@ -92,6 +92,7 @@ defaults = {
     "salesperson": safe_text(current_user.get("Name", "")),
     "salesperson_phone": safe_text(current_user.get("Phone", "")),
     "salesperson_email": safe_text(current_user.get("Email", "")),
+    "show_my_pending_quotes": False,
 }
 
 for key, value in defaults.items():
@@ -374,8 +375,7 @@ def add_annual_monitoring_fee(df):
 
     return df
 
-
-def load_template_into_quote(template_name):
+    def load_template_into_quote(template_name):
     if templates_df.empty:
         st.warning("No solution templates found.")
         return
@@ -452,6 +452,7 @@ def load_template_into_quote(template_name):
             + ", ".join(missing_items)
         )
 
+
 query_template = st.query_params.get("template", "")
 session_template = st.session_state.get("selected_template_from_dashboard", "")
 
@@ -474,6 +475,7 @@ if st.sidebar.button("Clear Current Quote"):
     st.session_state.revision_mode = False
     st.session_state.dashboard_template_loaded = False
     st.session_state.current_quote_number = ""
+    st.session_state.show_my_pending_quotes = False
     st.rerun()
 
 
@@ -587,10 +589,55 @@ else:
 st.sidebar.write("### Quote Number")
 st.sidebar.success(quote_number)
 
+st.sidebar.divider()
+
+if st.sidebar.button("📋 My Pending Quotes", use_container_width=True):
+    st.session_state.show_my_pending_quotes = True
+    st.rerun()
+
+
+if st.session_state.get("show_my_pending_quotes", False):
+
+    st.header("My Pending Quotes")
+
+    try:
+        approvals_df = gs.load_approval_requests()
+    except Exception as e:
+        st.error(f"Could not load pending quotes: {e}")
+        approvals_df = pd.DataFrame()
+
+    if approvals_df.empty:
+        st.info("You have no pending quotes.")
+    else:
+        my_pending_df = approvals_df[
+            (
+                approvals_df["Salesperson Email"]
+                .astype(str)
+                .str.lower()
+                == salesperson_email.lower()
+            )
+            &
+            (
+                approvals_df["Status"]
+                .astype(str)
+                .str.lower()
+                == "pending"
+            )
+        ]
+
+        if my_pending_df.empty:
+            st.info("You have no pending quotes.")
+        else:
+            st.dataframe(
+                my_pending_df,
+                use_container_width=True,
+                hide_index=True
+            )
 
 st.header("Load Solution Template")
 
 if not templates_df.empty:
+
     template_names = sorted(
         templates_df["Template Name"]
         .dropna()
@@ -608,8 +655,10 @@ if not templates_df.empty:
         st.rerun()
 
 else:
+
     st.info(
-        "No solution templates found. Add a SolutionTemplates tab in Google Sheets."
+        "No solution templates found. "
+        "Add a SolutionTemplates tab in Google Sheets."
     )
 
 
@@ -656,6 +705,7 @@ selected = selected_rows.iloc[0]
 col1, col2, col3 = st.columns(3)
 
 with col1:
+
     qty = st.number_input(
         "Quantity",
         min_value=1,
@@ -664,6 +714,7 @@ with col1:
     )
 
 with col2:
+
     discount = st.number_input(
         "Discount %",
         min_value=0.0,
@@ -673,6 +724,7 @@ with col2:
     )
 
 with col3:
+
     st.write("Selling Price")
     st.write(f"R {float(selected['Selling Price']):,.2f}")
 
@@ -682,6 +734,7 @@ st.write(selected["Description"])
 
 
 if st.button("Add To Quote"):
+
     unit_price, cost_price, line_total, line_cost, profit, profit_margin = (
         calculate_line_values(selected, qty, discount)
     )
@@ -706,95 +759,26 @@ if st.button("Add To Quote"):
     st.success("Product added")
     st.rerun()
 
+
 st.header("Quote Summary")
 
 if st.session_state.quote_items:
 
     quote_df = pd.DataFrame(st.session_state.quote_items)
+
     quote_df = normalise_quote_df(quote_df)
 
     quote_df = quote_df[
-        quote_df["Product"].astype(str).str.strip() != "Annual_Monitoring"
+        quote_df["Product"]
+        .astype(str)
+        .str.strip()
+        != "Annual_Monitoring"
     ].copy()
 
     edited_df = st.data_editor(
         quote_df,
         use_container_width=True,
-        num_rows="dynamic",
-        column_config={
-
-            "Qty": st.column_config.NumberColumn(
-                "Qty",
-                min_value=1,
-                step=1,
-                width="small"
-            ),
-
-            "Discount": st.column_config.NumberColumn(
-                "Discount %",
-                min_value=0.0,
-                max_value=100.0,
-                step=0.5,
-                width="small",
-                format="%.1f %%"
-            ),
-
-            "Unit Price": st.column_config.NumberColumn(
-                "Unit Price",
-                min_value=0.0,
-                step=0.01,
-                format="R %.2f",
-                width="medium"
-            ),
-
-            "Cost Price": st.column_config.NumberColumn(
-                "Cost Price",
-                disabled=True,
-                format="R %.2f",
-                width="medium"
-            ),
-
-            "Line Cost": st.column_config.NumberColumn(
-                "Line Cost",
-                disabled=True,
-                format="R %.2f",
-                width="medium"
-            ),
-
-            "Total": st.column_config.NumberColumn(
-                "Total",
-                disabled=True,
-                format="R %.2f",
-                width="medium"
-            ),
-
-            "Profit": st.column_config.NumberColumn(
-                "Profit",
-                disabled=True,
-                format="R %.2f",
-                width="medium"
-            ),
-
-            "Profit Margin %": st.column_config.NumberColumn(
-                "Profit Margin %",
-                disabled=True,
-                format="%.1f %%",
-                width="medium"
-            ),
-        },
-        disabled=[
-            "Identification",
-            "Product",
-            "Description",
-            "Billing",
-            "Cost Price",
-            "Line Cost",
-            "Total",
-            "Profit",
-            "Profit Margin %",
-            "Locked",
-            "Template"
-        ]
+        num_rows="dynamic"
     )
 
     edited_df = recalculate_quote_df(edited_df)
@@ -802,27 +786,12 @@ if st.session_state.quote_items:
     st.session_state.quote_items = edited_df.to_dict("records")
 
     final_df = add_annual_monitoring_fee(edited_df)
-    final_df = recalculate_quote_df(final_df)
 
-    if len(final_df) != len(edited_df):
-        st.subheader("Final Quote Lines Including Annual Monitoring")
-        st.dataframe(
-            final_df,
-            use_container_width=True,
-            hide_index=True
-        )
+    final_df = recalculate_quote_df(final_df)
 
     subtotal, vat, grand_total = calculate_totals(final_df)
 
-    gross_profit = float(final_df["Profit"].sum())
-    total_cost = float(final_df["Line Cost"].sum())
-
-    if subtotal > 0:
-        gross_margin = (gross_profit / subtotal) * 100
-    else:
-        gross_margin = 0
-
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
         st.metric("Subtotal", f"R {subtotal:,.2f}")
@@ -832,13 +801,6 @@ if st.session_state.quote_items:
 
     with col3:
         st.metric("Grand Total", f"R {grand_total:,.2f}")
-
-    with col4:
-        st.metric("Gross Profit", f"R {gross_profit:,.2f}")
-
-    st.caption(
-        f"Total Cost: R {total_cost:,.2f} | Gross Margin: {gross_margin:.1f}%"
-    )
 
 
     # =====================================================
@@ -854,9 +816,6 @@ if st.session_state.quote_items:
 
     approval_limit_raw = str(
         current_user.get("Approval Limit")
-        or current_user.get("Quote Limit")
-        or current_user.get("Quote Level")
-        or current_user.get("ApprovalLimit")
         or ""
     ).strip()
 
@@ -874,9 +833,6 @@ if st.session_state.quote_items:
             0
         )
 
-    st.sidebar.write("DEBUG USER:", current_user)
-    st.sidebar.write("DEBUG LIMIT:", user_approval_limit)
-    st.sidebar.write("DEBUG CAN APPROVE:", can_approve)
     approval_required = grand_total > user_approval_limit
 
     approve_quote = False
@@ -886,12 +842,11 @@ if st.session_state.quote_items:
         st.error(
             f"Approval required. "
             f"Quote total is R {grand_total:,.2f}, "
-            f"but your approval limit is R {user_approval_limit:,.2f}."
+            f"but your approval limit is "
+            f"R {user_approval_limit:,.2f}."
         )
 
         if can_approve:
-
-            st.success("You are authorised to approve this quote.")
 
             approve_quote = st.checkbox(
                 "Approve this quote"
@@ -899,19 +854,17 @@ if st.session_state.quote_items:
 
         else:
 
-            st.warning("You are not authorised to approve this quote.")
+            st.warning(
+                "You are not authorised to approve this quote."
+            )
 
     else:
 
         approve_quote = True
 
 
-    # =====================================================
-    # GENERATE / SAVE PDF
-    # =====================================================
-
     approval_status = gs.get_quote_approval_status(
-    quote_number
+        quote_number
     )
 
     if approval_status:
@@ -932,10 +885,16 @@ if st.session_state.quote_items:
                 "This quote was rejected."
             )
 
-            rejection_notes = approval_status.get("Notes", "")
+            rejection_notes = approval_status.get(
+                "Notes",
+                ""
+            )
 
             if rejection_notes:
-                st.write(f"Reason: {rejection_notes}")
+
+                st.write(
+                    f"Reason: {rejection_notes}"
+                )
 
         elif status == "approved":
 
@@ -944,31 +903,16 @@ if st.session_state.quote_items:
                 f"{approval_status.get('Approved By', '')}"
             )
 
-    already_saved = quote_already_saved(quote_number)
+
+    already_saved = quote_already_saved(
+        quote_number
+    )
 
     if already_saved:
 
         st.warning(
-            "This quote has already been generated and saved. "
-            "To create a changed version, load it as a revision or clear the current quote."
+            "This quote has already been generated and saved."
         )
-
-        existing_pdf_path = os.path.join(
-            "output",
-            "PDFs",
-            f"{quote_number}.pdf"
-        )
-
-        if os.path.exists(existing_pdf_path):
-
-            with open(existing_pdf_path, "rb") as f:
-
-                st.download_button(
-                    "⬇ Download Existing PDF",
-                    f,
-                    file_name=f"{quote_number}.pdf",
-                    mime="application/pdf"
-                )
 
     else:
 
@@ -1003,8 +947,6 @@ if st.session_state.quote_items:
 
             try:
 
-                st.info("Starting PDF generation...")
-
                 pdf_path = generate_pdf(
                     quote_number=quote_number,
                     customer=customer_name,
@@ -1021,11 +963,7 @@ if st.session_state.quote_items:
                     terms=terms
                 )
 
-                st.success(
-                    f"PDF generated successfully: {pdf_path}"
-                )
-
-                saved_json_path = save_quote_json(
+                save_quote_json(
                     quote_number=quote_number,
                     customer_name=customer_name,
                     company_name=company_name,
@@ -1042,14 +980,8 @@ if st.session_state.quote_items:
                 )
 
                 st.success(
-                    f"Quote JSON saved successfully: {saved_json_path}"
+                    "Quote saved successfully."
                 )
-
-                st.write("PDF saved to:")
-                st.code(pdf_path)
-
-                st.write("Quote data saved to:")
-                st.code(saved_json_path)
 
                 if os.path.exists(pdf_path):
 
@@ -1062,17 +994,13 @@ if st.session_state.quote_items:
                             mime="application/pdf"
                         )
 
-                else:
-
-                    st.error("PDF file was not found after generation.")
-
             except Exception as e:
 
                 import traceback
 
-                st.error("Quote save failed.")
                 st.error(str(e))
                 st.code(traceback.format_exc())
 
 else:
+
     st.info("No products added yet.")            
