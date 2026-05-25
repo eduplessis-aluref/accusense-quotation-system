@@ -841,46 +841,38 @@ if st.session_state.quote_items:
     )
 
 
-    # =====================================================
+# =====================================================
     # APPROVAL LOGIC
     # =====================================================
 
     can_approve = (
-    str(current_user.get("Can Approve", "No"))
-    .strip()
-    .lower()
-    == "yes"
-)
+        str(current_user.get("Can Approve", "No"))
+        .strip()
+        .lower()
+        == "yes"
+    )
 
-approval_limit_raw = str(
-    current_user.get("Approval Limit", "")
-).strip()
+    approval_limit_raw = str(
+        current_user.get("Approval Limit", "")
+    ).strip()
 
-# Blank limit handling
-if approval_limit_raw == "":
+    if approval_limit_raw == "":
 
-    if can_approve:
-
-        # Unlimited approval for authorised approvers
-        user_approval_limit = float("inf")
+        if can_approve:
+            user_approval_limit = float("inf")
+        else:
+            user_approval_limit = 0
 
     else:
 
-        # Normal users with blank limit get zero approval limit
-        user_approval_limit = 0
+        user_approval_limit = safe_float(
+            approval_limit_raw,
+            0
+        )
 
-else:
-
-    user_approval_limit = safe_float(
-        approval_limit_raw,
-        0
-    )
-
-# DEBUG
-st.sidebar.write("DEBUG USER:", current_user)
-st.sidebar.write("DEBUG LIMIT:", user_approval_limit)
-st.sidebar.write("DEBUG CAN APPROVE:", can_approve)
-
+    st.sidebar.write("DEBUG USER:", current_user)
+    st.sidebar.write("DEBUG LIMIT:", user_approval_limit)
+    st.sidebar.write("DEBUG CAN APPROVE:", can_approve)
     approval_required = grand_total > user_approval_limit
 
     approve_quote = False
