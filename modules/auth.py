@@ -1,59 +1,61 @@
 import streamlit as st
-from modules.google_sheets import client, SPREADSHEET_NAME
-
-
-@st.cache_data(ttl=120)
-def load_users():
-    sheet = client.open(SPREADSHEET_NAME).worksheet("Users")
-    return sheet.get_all_records()
-
-
-def authenticate_user(email, password):
-    users = load_users()
-
-    email = str(email).strip().lower()
-    password = str(password).strip()
-
-    for user in users:
-        user_email = str(user.get("Email", "")).strip().lower()
-        user_password = str(user.get("Password", "")).strip()
-        active = str(user.get("Active", "")).strip().lower()
-
-        if user_email == email and user_password == password and active == "yes":
-            return {
-                "Email": user.get("Email", ""),
-                "Name": user.get("Name", ""),
-                "Role": user.get("Role", ""),
-                "Phone": user.get("Phone", ""),
-            }
-
-    return None
+import modules.google_sheets as gs
 
 
 def require_login():
-    if st.session_state.get("authenticated", False):
-        return st.session_state.get("current_user", {})
+    if "user" not in st.session_state:
+        st.session_state.user = None
 
-    st.title("AccuSense Login")
+    if st.session_state.user is not None:
+        return st.session_state.user
+
+    st.title("Login")
 
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
 
     if st.button("Login"):
-        user = authenticate_user(email, password)
 
-        if user:
-            st.session_state.authenticated = True
-            st.session_state.current_user = user
-            st.rerun()
-        else:
-            st.error("Invalid login or inactive user.")
+        users_df = gs.load_users()
+
+        users_df.columns = users_df.columns.astype(str).str.strip()
+
+        users_df["Email"] = (
+            users_df["Email"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .str.lower()
+        )
+
+        users_df["Password"] = (
+            users_df["Password"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
+
+        matched_user = users_df[
+            (users_df["Email"] == email.strip().lower())
+            &
+            (users_df["Password"] == password.strip())
+        ]
+
+        if matched_user.empty:
+            st.error("Invalid email or password")
+            st.stop()
+
+        user_row = matched_user.iloc[0].to_dict()
+
+        # Keep FULL user row, including Approval Limit and Can Approve
+        st.session_state.user = user_row
+
+        st.rerun()
 
     st.stop()
 
 
 def logout_button():
     if st.sidebar.button("Logout"):
-        st.session_state.authenticated = False
-        st.session_state.current_user = {}
+        st.session_state.user = None
         st.rerun()
