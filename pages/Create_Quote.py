@@ -598,37 +598,11 @@ if st.sidebar.button("Load Quote"):
 
         import re
 
-        base_quote_number = quote_data.get(
-            "base_quote_number",
-            ""
+        base_quote_number = re.sub(
+            r"(-R\d+)+$",
+            "",
+            str(quote_data.get("base_quote_number", "") or loaded_quote_number).strip()
         )
-
-        if not base_quote_number:
-
-            base_quote_number = re.sub(
-                r"(-R\d+)+$",
-                "",
-                loaded_quote_number
-            )
-
-        if not base_quote_number:
-
-            if "-REV" in loaded_quote_number:
-                base_quote_number = (
-                    loaded_quote_number
-                    .split("-REV")[0]
-                )
-
-            elif "-R" in loaded_quote_number:
-                base_quote_number = (
-                    loaded_quote_number
-                    .rsplit("-R", 1)[0]
-                )
-
-            else:
-                base_quote_number = (
-                    loaded_quote_number
-                )
 
         st.session_state.base_quote_number = (
             base_quote_number
