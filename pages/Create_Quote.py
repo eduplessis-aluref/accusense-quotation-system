@@ -596,10 +596,20 @@ if st.sidebar.button("Load Quote"):
             loaded_quote_number
         )
 
+        import re
+
         base_quote_number = quote_data.get(
             "base_quote_number",
             ""
         )
+
+        if not base_quote_number:
+
+            base_quote_number = re.sub(
+                r"(-R\d+)+$",
+                "",
+                loaded_quote_number
+            )
 
         if not base_quote_number:
 

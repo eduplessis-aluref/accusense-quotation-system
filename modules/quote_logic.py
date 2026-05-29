@@ -42,33 +42,38 @@ def generate_quote_number(salesperson=""):
 
 
 def get_base_quote_number(quote_number):
-    quote_number = str(quote_number)
+    import re
 
-    if "-REV" in quote_number:
-        return quote_number.split("-REV")[0]
+    quote_number = str(quote_number).strip()
 
-    return quote_number
+    return re.sub(
+        r"(-R\d+)+$",
+        "",
+        quote_number
+    )
 
 
 def next_revision_number(base_quote_number):
+    import re
+
     spreadsheet = get_spreadsheet()
     register_sheet = spreadsheet.worksheet("QuoteRegister")
 
     rows = register_sheet.get_all_records()
 
+    clean_base = get_base_quote_number(base_quote_number)
     highest_revision = 0
 
     for row in rows:
-        row_base = str(row.get("Base Quote Number", "")).strip()
-        revision = str(row.get("Revision", "")).strip()
+        quote_number = str(row.get("Quote Number", "")).strip()
+        row_base = get_base_quote_number(quote_number)
 
-        if row_base == base_quote_number:
-            if revision.upper().startswith("REV"):
-                try:
-                    rev_num = int(revision.upper().replace("REV", ""))
-                    highest_revision = max(highest_revision, rev_num)
-                except Exception:
-                    pass
+        if row_base == clean_base:
+            match = re.search(r"-R(\d+)$", quote_number)
+
+            if match:
+                rev_num = int(match.group(1))
+                highest_revision = max(highest_revision, rev_num)
 
     return highest_revision + 1
 
