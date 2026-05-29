@@ -546,52 +546,8 @@ def generate_pdf(
     elements.append(Spacer(1, 12))
 
     # =================================================
-    # COST SUMMARY
+    # TOTALS
     # =================================================
-
-    if "Billing" in quote_df.columns:
-
-        once_off_total = quote_df[
-            quote_df["Billing"]
-            .astype(str)
-            .str.lower()
-            .str.contains("once")
-        ]["Total"].sum()
-
-        monthly_total = quote_df[
-            quote_df["Billing"]
-            .astype(str)
-            .str.lower()
-            .str.contains("monthly")
-        ]["Total"].sum()
-
-    else:
-
-        once_off_total = subtotal
-        monthly_total = 0
-
-    summary_table = Table(
-        [
-            ["Cost Summary", ""],
-            ["Once-Off Cost:", f"R {once_off_total:,.2f}"],
-            ["Monthly Cost:", f"R {monthly_total:,.2f}"],
-        ],
-        colWidths=[24 * mm, 24 * mm],
-        hAlign="LEFT"
-    )
-
-    summary_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), GREEN),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), FONT_BOLD),
-        ("SPAN", (0, 0), (1, 0)),
-        ("GRID", (0, 0), (-1, -1), 0.45, GREEN),
-        ("FONTNAME", (0, 1), (-1, -1), FONT_BOLD),
-        ("ALIGN", (1, 1), (1, -1), "RIGHT"),
-        ("FONTSIZE", (0, 0), (-1, -1), 7),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-    ]))
 
     totals_table = Table(
         [
@@ -614,24 +570,8 @@ def generate_pdf(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
 
-    summary_totals_table = Table(
-        [[summary_table, "", totals_table]],
-        colWidths=[
-            48 * mm,
-            86 * mm,
-            48 * mm
-        ],
-        hAlign="LEFT"
-    )
-
-    summary_totals_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-    ]))
-
-    elements.append(summary_totals_table)
-    elements.append(Spacer(1, 16))
+    elements.append(totals_table)
+    elements.append(Spacer(1, 4))
 
     # =================================================
     # TERMS
