@@ -121,6 +121,7 @@ required_columns = [
     "Identification",
     "Short Name",
     "Description",
+    "UOM",
     "Selling Price",
     "Billing",
     "Final Cost before profit",
@@ -155,6 +156,13 @@ products_df["Short Name"] = (
 
 products_df["Description"] = (
     products_df["Description"]
+    .fillna("")
+    .astype(str)
+    .str.strip()
+)
+
+products_df["UOM"] = (
+    products_df["UOM"]
     .fillna("")
     .astype(str)
     .str.strip()
@@ -214,6 +222,7 @@ def normalise_quote_df(df):
         "Identification",
         "Product",
         "Description",
+        "UOM",
         "Billing",
         "Qty",
         "Discount",
@@ -355,6 +364,7 @@ def add_annual_monitoring_fee(df):
             f"Monitoring Fee - {int(total_sensors)} Sensors "
             f"(12 Months Prepaid)"
         ),
+        "UOM": "Year",
         "Billing": "12 Months Prepaid",
         "Qty": 1,
         "Discount": 0,
@@ -448,6 +458,7 @@ def load_template_into_quote(template_name):
                 "Identification": product["Identification"],
                 "Product": product["Short Name"],
                 "Description": product["Description"],
+                "UOM": product["UOM"],
                 "Billing": product["Billing"],
                 "Qty": qty,
                 "Discount": discount,
@@ -837,11 +848,14 @@ with st.expander("➕ Add Products Manually", expanded=False):
                 discount
             )
 
+            st.write("Selected UOM:", selected.get("UOM", "NOT FOUND"))
+            
             st.session_state.quote_items.append(
                 {
                     "Identification": selected["Identification"],
                     "Product": selected["Short Name"],
                     "Description": selected["Description"],
+                    "UOM": selected.get("UOM", ""),
                     "Billing": selected["Billing"],
                     "Qty": qty,
                     "Discount": discount,
@@ -869,8 +883,11 @@ st.header("Quote Summary")
 if st.session_state.quote_items:
 
     quote_df = pd.DataFrame(
-        st.session_state.quote_items
+    st.session_state.quote_items
     )
+
+    st.write("QUOTE DF COLUMNS")
+    st.write(list(quote_df.columns))
 
     quote_df = normalise_quote_df(quote_df)
 
@@ -880,6 +897,8 @@ if st.session_state.quote_items:
         .str.strip()
         != "Annual_Monitoring"
     ].copy()
+    
+    st.write("Quote columns:", list(quote_df.columns))
 
     edited_df = st.data_editor(
         quote_df,
