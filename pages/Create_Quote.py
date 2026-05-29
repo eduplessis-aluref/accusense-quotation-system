@@ -716,6 +716,23 @@ if st.session_state.quote_items:
         if st.button("Generate / Save PDF"):
 
             if not approve_quote:
+            
+                # Save quote JSON first so approver can view the full quote detail
+                saved_json_path = save_quote_json(
+                    quote_number=quote_number,
+                    customer_name=customer_name,
+                    company_name=company_name,
+                    site_name=site_name,
+                    customer_email="",
+                    salesperson=salesperson,
+                    salesperson_phone=salesperson_phone,
+                    salesperson_email=salesperson_email,
+                    items=final_df.to_dict("records"),
+                    subtotal=subtotal,
+                    vat=vat,
+                    total=grand_total,
+                    pdf_path=""
+                )
 
                 approval_saved = gs.save_approval_request(
                     quote_number=quote_number,
@@ -732,6 +749,10 @@ if st.session_state.quote_items:
                     st.error(
                         "This quote exceeds your approval limit. "
                         "An approval request has been submitted."
+                    )
+
+                    st.info(
+                        f"Quote detail saved for approval review: {saved_json_path}"
                     )
 
                 else:
