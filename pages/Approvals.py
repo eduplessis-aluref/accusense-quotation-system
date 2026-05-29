@@ -1,16 +1,11 @@
 import streamlit as st
 import pandas as pd
-import modules.google_sheets as gs
-
-st.write("Google Sheets module file:", gs.__file__)
-st.write(
-    "Has load_approval_requests:",
-    hasattr(gs, "load_approval_requests")
-)
 
 from modules.ui import render_header
 from modules.auth import require_login, logout_button
 import modules.google_sheets as gs
+
+from modules.quote_logic import load_quote_json
 
 
 st.set_page_config(
@@ -68,9 +63,11 @@ if pending_df.empty:
 
 for _, row in pending_df.iterrows():
 
+    quote_number = str(row.get("Quote Number", "")).strip()
+
     with st.container(border=True):
 
-        st.write(f"### Quote: {row.get('Quote Number', '')}")
+        st.write(f"### Quote: {quote_number}")
 
         col1, col2, col3 = st.columns(3)
 
@@ -85,6 +82,39 @@ for _, row in pending_df.iterrows():
         with col3:
             st.write(f"**Quote Total:** R {float(row.get('Quote Total', 0)):,.2f}")
             st.write(f"**Approval Limit:** R {float(row.get('Approval Limit', 0)):,.2f}")
+
+        with st.expander("View Quote Detail", expanded=False):
+
+            try:
+                quote_data = load_quote_json(quote_number)
+
+                st.write("#### Quote Information")
+                st.write(f"**Customer:** {quote_data.get('customer_name', '')}")
+                st.write(f"**Company:** {quote_data.get('company_name', '')}")
+                st.write(f"**Site:** {quote_data.get('site_name', '')}")
+                st.write(f"**Salesperson:** {quote_data.get('salesperson', '')}")
+
+                items = quote_data.get("items", [])
+
+                if items:
+                    quote_items_df = pd.DataFrame(items)
+
+                    st.write("#### Quote Lines")
+                    st.dataframe(
+                        quote_items_df,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                else:
+                    st.warning("No quote line items found.")
+
+                st.write("#### Totals")
+                st.write(f"**Subtotal:** R {float(quote_data.get('subtotal', 0)):,.2f}")
+                st.write(f"**VAT:** R {float(quote_data.get('vat', 0)):,.2f}")
+                st.write(f"**Total:** R {float(quote_data.get('total', 0)):,.2f}")
+
+            except Exception as e:
+                st.error(f"Could not load quote detail: {e}")
 
         notes = st.text_area(
             "Approval Notes",
