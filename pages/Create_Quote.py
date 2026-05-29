@@ -722,9 +722,9 @@ with sales_col3:
 # LOAD TEMPLATE
 # =====================================================
 
-st.header("Load Solution Template")
+with st.expander("📦 Load Solution Template", expanded=False):
 
-if not templates_df.empty:
+    if not templates_df.empty:
 
     template_names = sorted(
         templates_df["Template Name"]
@@ -755,110 +755,110 @@ else:
 # ADD PRODUCTS
 # =====================================================
 
-st.header("Add Products Manually")
+    with st.expander("➕ Add Products Manually", expanded=False):
 
-category_list = sorted(
-    products_df["Identification"]
-    .dropna()
-    .astype(str)
-    .unique()
-)
-
-selected_identification = st.selectbox(
-    "Select Main Category",
-    category_list
-)
-
-category_df = products_df[
-    products_df["Identification"] == selected_identification
-].copy()
-
-product_list = sorted(
-    category_df["Short Name"]
-    .dropna()
-    .astype(str)
-    .unique()
-)
-
-selected_short_name = st.selectbox(
-    "Select Product",
-    product_list
-)
-
-selected_rows = category_df[
-    category_df["Short Name"] == selected_short_name
-]
-
-if selected_rows.empty:
-    st.warning("Selected product not found.")
-    st.stop()
-
-selected = selected_rows.iloc[0]
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    qty = st.number_input(
-        "Quantity",
-        min_value=1,
-        value=1,
-        step=1
+    category_list = sorted(
+        products_df["Identification"]
+        .dropna()
+        .astype(str)
+        .unique()
     )
 
-with col2:
-    discount = st.number_input(
-        "Discount %",
-        min_value=0.0,
-        max_value=100.0,
-        value=0.0,
-        step=0.5
+    selected_identification = st.selectbox(
+        "Select Main Category",
+        category_list
     )
 
-with col3:
-    st.write("Selling Price")
-    st.write(f"R {float(selected['Selling Price']):,.2f}")
+    category_df = products_df[
+        products_df["Identification"] == selected_identification
+    ].copy()
 
-
-st.write("**Full Product Description:**")
-st.write(selected["Description"])
-
-
-if st.button("Add To Quote"):
-
-    (
-        unit_price,
-        cost_price,
-        line_total,
-        line_cost,
-        profit,
-        profit_margin,
-    ) = calculate_line_values(
-        selected,
-        qty,
-        discount
+    product_list = sorted(
+        category_df["Short Name"]
+        .dropna()
+        .astype(str)
+        .unique()
     )
 
-    st.session_state.quote_items.append(
-        {
-            "Identification": selected["Identification"],
-            "Product": selected["Short Name"],
-            "Description": selected["Description"],
-            "Billing": selected["Billing"],
-            "Qty": qty,
-            "Discount": discount,
-            "Unit Price": unit_price,
-            "Cost Price": cost_price,
-            "Line Cost": line_cost,
-            "Total": line_total,
-            "Profit": profit,
-            "Profit Margin %": profit_margin,
-            "Locked": "No",
-            "Template": "",
-        }
+    selected_short_name = st.selectbox(
+        "Select Product",
+        product_list
     )
 
-    st.success("Product added")
-    st.rerun()
+    selected_rows = category_df[
+        category_df["Short Name"] == selected_short_name
+    ]
+
+    if selected_rows.empty:
+        st.warning("Selected product not found.")
+        st.stop()
+
+    selected = selected_rows.iloc[0]
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        qty = st.number_input(
+            "Quantity",
+            min_value=1,
+            value=1,
+            step=1
+        )
+
+    with col2:
+        discount = st.number_input(
+            "Discount %",
+            min_value=0.0,
+            max_value=100.0,
+            value=0.0,
+            step=0.5
+        )
+
+    with col3:
+        st.write("Selling Price")
+        st.write(f"R {float(selected['Selling Price']):,.2f}")
+
+
+    st.write("**Full Product Description:**")
+    st.write(selected["Description"])
+
+
+    if st.button("Add To Quote"):
+
+        (
+            unit_price,
+            cost_price,
+            line_total,
+            line_cost,
+            profit,
+            profit_margin,
+        ) = calculate_line_values(
+            selected,
+            qty,
+            discount
+        )
+
+        st.session_state.quote_items.append(
+            {
+                "Identification": selected["Identification"],
+                "Product": selected["Short Name"],
+                "Description": selected["Description"],
+                "Billing": selected["Billing"],
+                "Qty": qty,
+                "Discount": discount,
+                "Unit Price": unit_price,
+                "Cost Price": cost_price,
+                "Line Cost": line_cost,
+                "Total": line_total,
+                "Profit": profit,
+                "Profit Margin %": profit_margin,
+                "Locked": "No",
+                "Template": "",
+            }
+        )
+
+        st.success("Product added")
+        st.rerun()
 
 
 # =====================================================
