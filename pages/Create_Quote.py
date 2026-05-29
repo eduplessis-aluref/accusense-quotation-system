@@ -886,9 +886,6 @@ if st.session_state.quote_items:
     st.session_state.quote_items
     )
 
-    st.write("QUOTE DF COLUMNS")
-    st.write(list(quote_df.columns))
-
     quote_df = normalise_quote_df(quote_df)
 
     quote_df = quote_df[
@@ -898,12 +895,22 @@ if st.session_state.quote_items:
         != "Annual_Monitoring"
     ].copy()
     
-    st.write("Quote columns:", list(quote_df.columns))
-
     edited_df = st.data_editor(
         quote_df,
         use_container_width=True,
-        num_rows="dynamic"
+        num_rows="dynamic",
+        column_order=[
+            "Identification",
+            "Product",
+            "Description",
+            "UOM",
+            "Billing",
+            "Qty",
+            "Discount",
+            "Unit Price",
+            "Total",
+            "Profit",
+        ],
     )
 
     edited_df = recalculate_quote_df(edited_df)
