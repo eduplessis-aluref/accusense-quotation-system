@@ -235,7 +235,8 @@ def generate_pdf(
     subtotal,
     vat,
     total,
-    terms
+    terms,
+    signature_file=""
 ):
 
     os.makedirs(
@@ -611,15 +612,58 @@ def generate_pdf(
     elements.append(line)
     elements.append(Spacer(1, 8))
 
-    closing_text = f"""
-    Should there be any further information needed, please contact me as above.<br/><br/>
-    Kind regards,<br/>
-    <b>{salesperson}</b>
-    """
+    elements.append(
+        Paragraph(
+            "Should there be any further information needed, please contact me as above.",
+            normal
+        )
+    )
+
+    elements.append(Spacer(1, 6))
 
     elements.append(
         Paragraph(
-            closing_text,
+            "Kind regards,",
+            normal
+        )
+    )
+
+    elements.append(Spacer(1, 2))
+
+    if signature_file and os.path.exists(signature_file):
+
+        try:
+
+            elements.append(
+                Image(
+                    signature_file,
+                    width=35 * mm,
+                    height=12 * mm
+                )
+            )
+
+            elements.append(Spacer(1, 2))
+
+        except Exception:
+            pass
+
+    elements.append(
+        Paragraph(
+            f"<b>{salesperson}</b>",
+            normal
+        )
+    )
+
+    elements.append(
+        Paragraph(
+            salesperson_phone,
+            normal
+        )
+    )
+
+    elements.append(
+        Paragraph(
+            salesperson_email,
             normal
         )
     )
