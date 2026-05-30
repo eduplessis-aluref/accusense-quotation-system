@@ -543,7 +543,7 @@ def generate_pdf(
     ]))
 
     elements.append(product_table)
-    elements.append(Spacer(1, 12))
+    elements.append(Spacer(1, 2))
 
     # =================================================
     # TOTALS
@@ -584,7 +584,7 @@ def generate_pdf(
         )
     )
 
-    elements.append(Spacer(1, 4))
+    elements.append(Spacer(1, 1))
 
     elements.append(
         Paragraph(
@@ -593,7 +593,7 @@ def generate_pdf(
         )
     )
 
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 0))
 
     # =================================================
     # SIGN OFF
