@@ -25,8 +25,6 @@ st.set_page_config(
 
 current_user = require_login()
 
-st.sidebar.write("USER DEBUG")
-st.sidebar.json(current_user)
 
 render_header()
 
@@ -1126,9 +1124,7 @@ if st.session_state.quote_items:
                     current_user.get("Signature File", "")
                 ).strip()
                 
-                st.write("Signature file from user:", signature_file)
-                st.write("Signature file exists:", os.path.exists(signature_file))
-
+                
                 pdf_path = generate_pdf(
                     quote_number=quote_number,
                     customer=customer_name,
