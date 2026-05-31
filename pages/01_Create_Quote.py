@@ -25,6 +25,9 @@ st.set_page_config(
 
 current_user = require_login()
 
+st.sidebar.write("USER DEBUG")
+st.sidebar.json(current_user)
+
 render_header()
 
 st.sidebar.success(f"Logged in as: {current_user.get('Name', '')}")
@@ -1118,6 +1121,13 @@ if st.session_state.quote_items:
                 st.stop()
 
             try:
+                
+                signature_file = str(
+                    current_user.get("Signature File", "")
+                ).strip()
+                
+                st.write("Signature file from user:", signature_file)
+                st.write("Signature file exists:", os.path.exists(signature_file))
 
                 pdf_path = generate_pdf(
                     quote_number=quote_number,
@@ -1133,6 +1143,7 @@ if st.session_state.quote_items:
                     vat=vat,
                     total=grand_total,
                     terms=terms,
+                    signature_file=signature_file,
                 )
 
                 save_quote_json(
