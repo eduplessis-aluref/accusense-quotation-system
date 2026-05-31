@@ -630,22 +630,30 @@ def generate_pdf(
 
     elements.append(Spacer(1, 2))
 
-    if signature_file and os.path.exists(signature_file):
+    try:
 
-        try:
+        
+        if signature_file and os.path.exists(signature_file):
 
-            elements.append(
-                Image(
-                    signature_file,
-                    width=35 * mm,
-                    height=12 * mm
-                )
+            signature_img = Image(
+                signature_file,
+                width=35 * mm,
+                height=12 * mm
             )
 
+            signature_img.hAlign = "LEFT"
+
+            elements.append(signature_img)
             elements.append(Spacer(1, 2))
 
-        except Exception:
-            pass
+    except Exception as e:
+
+        elements.append(
+            Paragraph(
+                f"SIGNATURE ERROR: {str(e)}",
+                normal
+            )
+        )
 
     elements.append(
         Paragraph(
