@@ -236,7 +236,8 @@ def generate_pdf(
     vat,
     total,
     terms,
-    signature_file=""
+    signature_file="",
+    quote_output_type="Detailed Quote"
 ):
 
     os.makedirs(
@@ -457,94 +458,120 @@ def generate_pdf(
     # PRODUCT TABLE
     # =================================================
 
-    table_data = [[
-        "Product",
-        "Description",
-        "Billing",
-        "UOM",
-        "Qty",
-        "Discount",
-        "Unit Price",
-        "Total"
-    ]]
+    if quote_output_type == "Summarized Quote":
 
-    for _, row in quote_df.iterrows():
+        summary_df = (
+            quote_df
+            .groupby("Identification", as_index=False)
+            .agg({
+                "Qty": "sum",
+                "Total": "sum"
+            })
+        )
 
-        table_data.append([
+        table_data = [[
+            "Identification",
+            "Qty",
+            "Total"
+        ]]
 
-            Paragraph(
-                f"<b>{str(row['Product'])}</b>",
-                normal
-            ),
+        for _, row in summary_df.iterrows():
 
-            Paragraph(
-                str(row["Description"]),
-                normal
-            ),
+            table_data.append([
+                str(row["Identification"]),
+                str(row["Qty"]),
+                f"R {float(row['Total']):,.2f}",
+            ])
 
-            Paragraph(
-                str(row.get("Billing", "")),
-                normal
-            ),
+        product_table = Table(
+            table_data,
+            repeatRows=1,
+            colWidths=[
+                110 * mm,
+                25 * mm,
+                45 * mm
+            ]
+        )
 
-            Paragraph(
-                str(row.get("UOM", "")),
-                normal
-            ),
+    else:
 
-            str(row["Qty"]),
+        table_data = [[
+            "Product",
+            "Description",
+            "Billing",
+            "UOM",
+            "Qty",
+            "Discount",
+            "Unit Price",
+            "Total"
+        ]]
 
-            f"{float(row['Discount']):.1f}%",
+        for _, row in quote_df.iterrows():
 
-            f"R {float(row['Unit Price']):,.2f}",
+            table_data.append([
 
-            f"R {float(row['Total']):,.2f}",
-        ])
+                Paragraph(
+                    f"<b>{str(row['Product'])}</b>",
+                    normal
+                ),
 
-    product_table = Table(
-        table_data,
-        repeatRows=1,
-        colWidths=[
-            28 * mm,  # Product
-            52 * mm,  # Description
-            18 * mm,  # Billing
-            12 * mm,  # UOM
-            12 * mm,  # Qty
-            18 * mm,  # Discount
-            20 * mm,  # Unit Price
-            24 * mm,  # Total
-        ]
-    )
+                Paragraph(
+                    str(row["Description"]),
+                    normal
+                ),
+
+                Paragraph(
+                    str(row.get("Billing", "")),
+                    normal
+                ),
+
+                Paragraph(
+                    str(row.get("UOM", "")),
+                    normal
+                ),
+
+                str(row["Qty"]),
+
+                f"{float(row['Discount']):.1f}%",
+
+                f"R {float(row['Unit Price']):,.2f}",
+
+                f"R {float(row['Total']):,.2f}",
+            ])
+
+        product_table = Table(
+            table_data,
+            repeatRows=1,
+            colWidths=[
+                28 * mm,
+                52 * mm,
+                18 * mm,
+                12 * mm,
+                12 * mm,
+                18 * mm,
+                20 * mm,
+                24 * mm,
+            ]
+        )
 
     product_table.setStyle(TableStyle([
 
         ("BACKGROUND", (0, 0), (-1, 0), BLUE),
-
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-
         ("FONTNAME", (0, 0), (-1, 0), FONT_BOLD),
-
         ("FONTSIZE", (0, 0), (-1, 0), 7.5),
-
         ("GRID", (0, 0), (-1, -1), 0.45, colors.grey),
-
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-
-        ("ALIGN", (3, 1), (4, -1), "CENTER"),
-
-        ("ALIGN", (5, 1), (6, -1), "RIGHT"),
-
         ("FONTNAME", (0, 1), (-1, -1), FONT_NORMAL),
-
         ("FONTSIZE", (0, 1), (-1, -1), 7),
-
         ("TOPPADDING", (0, 0), (-1, -1), 4),
-
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+
     ]))
 
     elements.append(product_table)
     elements.append(Spacer(1, 2))
+    
 
     # =================================================
     # TOTALS
