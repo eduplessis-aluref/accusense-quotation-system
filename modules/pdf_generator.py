@@ -498,10 +498,8 @@ def generate_pdf(
         table_data = [[
             "Product",
             "Description",
-            "Billing",
             "UOM",
             "Qty",
-            "Discount",
             "Unit Price",
             "Total"
         ]]
@@ -521,18 +519,11 @@ def generate_pdf(
                 ),
 
                 Paragraph(
-                    str(row.get("Billing", "")),
-                    normal
-                ),
-
-                Paragraph(
                     str(row.get("UOM", "")),
                     normal
                 ),
 
                 str(row["Qty"]),
-
-                f"{float(row['Discount']):.1f}%",
 
                 f"R {float(row['Unit Price']):,.2f}",
 
@@ -543,14 +534,12 @@ def generate_pdf(
             table_data,
             repeatRows=1,
             colWidths=[
-                28 * mm,
-                52 * mm,
-                18 * mm,
-                12 * mm,
-                12 * mm,
-                18 * mm,
-                20 * mm,
-                24 * mm,
+                32 * mm,   # Product
+                76 * mm,   # Description
+                14 * mm,   # UOM
+                12 * mm,   # Qty
+                24 * mm,   # Unit Price
+                24 * mm,   # Total
             ]
         )
 
