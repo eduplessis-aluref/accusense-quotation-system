@@ -85,6 +85,7 @@ defaults = {
     "loaded_quote_number": "",
     "base_quote_number": "",
     "revision_mode": False,
+    "loaded_existing_quote": False,
     "dashboard_template_loaded": False,
     "current_quote_number": "",
     "customer_name": "",
@@ -532,6 +533,7 @@ if st.sidebar.button("Clear Current Quote"):
     st.session_state.loaded_quote_number = ""
     st.session_state.base_quote_number = ""
     st.session_state.revision_mode = False
+    st.session_state.loaded_existing_quote = False
     st.session_state.dashboard_template_loaded = False
     st.session_state.current_quote_number = ""
 
@@ -610,9 +612,9 @@ if st.sidebar.button("Load Quote"):
         st.session_state.base_quote_number = (
             base_quote_number
         )
-
-        st.session_state.revision_mode = True
-        st.session_state.current_quote_number = ""
+        st.session_state.current_quote_number = loaded_quote_number
+        st.session_state.revision_mode = False
+        st.session_state.loaded_existing_quote = True
 
         st.success(
             f"Loaded quote: {selected_saved_quote}"
@@ -633,37 +635,48 @@ st.session_state.salesperson_email = safe_text(
     st.session_state.salesperson_email
 )
 
-if st.session_state.revision_mode:
+if st.session_state.get("loaded_existing_quote", False):
 
-    if not st.session_state.current_quote_number:
+    col_existing_1, col_existing_2 = st.columns(2)
 
-        quote_number, revision = generate_revision_quote_number(
-            st.session_state.base_quote_number
+    with col_existing_1:
+
+        existing_pdf_path = os.path.join(
+            "output",
+            "PDFs",
+            f"{quote_number}.pdf"
         )
 
-        st.session_state.current_quote_number = quote_number
+        if os.path.exists(existing_pdf_path):
 
-    else:
+            with open(existing_pdf_path, "rb") as f:
 
-        quote_number = st.session_state.current_quote_number
+                st.download_button(
+                    "⬇ Download Existing PDF",
+                    f,
+                    file_name=f"{quote_number}.pdf",
+                    mime="application/pdf",
+                )
 
-else:
+        else:
 
-    if not st.session_state.current_quote_number:
+            st.warning(
+                "Existing PDF file was not found. You can regenerate it below if needed."
+            )
 
-        quote_number = generate_quote_number(
-            st.session_state.salesperson
-        )
+    with col_existing_2:
 
-        st.session_state.current_quote_number = quote_number
+        if st.button("Create Revision"):
 
-    else:
+            quote_number, revision = generate_revision_quote_number(
+                st.session_state.base_quote_number
+            )
 
-        quote_number = st.session_state.current_quote_number
+            st.session_state.current_quote_number = quote_number
+            st.session_state.revision_mode = True
+            st.session_state.loaded_existing_quote = False
 
-
-st.sidebar.write("### Quote Number")
-st.sidebar.success(quote_number)
+            st.rerun()
 
 
 # =====================================================
