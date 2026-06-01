@@ -936,6 +936,14 @@ if st.session_state.quote_items:
             f"R {grand_total:,.2f}"
         )
 
+    st.markdown("### Quote Output Type")
+
+    quote_output_type = st.radio(
+        "Select quote format",
+        ["Detailed Quote", "Summarized Quote"],
+        horizontal=True,
+        key="quote_output_type"
+    )
 
     # =====================================================
     # APPROVAL LOGIC
@@ -1140,6 +1148,7 @@ if st.session_state.quote_items:
                     total=grand_total,
                     terms=terms,
                     signature_file=signature_file,
+                    quote_output_type=quote_output_type,
                 )
 
                 save_quote_json(
