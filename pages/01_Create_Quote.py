@@ -359,7 +359,9 @@ def add_annual_monitoring_fee(df):
         monitoring_margin = 0
 
     monitoring_row = {
-        "Identification": "Service",
+        "Identification": str(
+        monitoring_product["Identification"]
+    ),
         "Product": "Annual_Monitoring",
         "Description": (
             f"Monitoring Fee - {int(total_sensors)} Sensors "
@@ -940,7 +942,7 @@ if st.session_state.quote_items:
 
     quote_output_type = st.radio(
         "Select quote format",
-        ["Detailed Quote", "Summarized Quote"],
+        ["Summarized Quote","Detailed Quote"],
         horizontal=True,
         key="quote_output_type"
     )
