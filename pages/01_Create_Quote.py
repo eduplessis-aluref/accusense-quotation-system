@@ -637,6 +637,44 @@ st.session_state.salesperson_email = safe_text(
 
 if st.session_state.get("loaded_existing_quote", False):
 
+    quote_number = st.session_state.current_quote_number
+
+else:
+
+    if st.session_state.revision_mode:
+
+        if not st.session_state.current_quote_number:
+
+            quote_number, revision = generate_revision_quote_number(
+                st.session_state.base_quote_number
+            )
+
+            st.session_state.current_quote_number = quote_number
+
+        else:
+
+            quote_number = st.session_state.current_quote_number
+
+    else:
+
+        if not st.session_state.current_quote_number:
+
+            quote_number = generate_quote_number(
+                st.session_state.salesperson
+            )
+
+            st.session_state.current_quote_number = quote_number
+
+        else:
+
+            quote_number = st.session_state.current_quote_number
+
+
+st.sidebar.write("### Quote Number")
+st.sidebar.success(quote_number)
+
+if st.session_state.get("loaded_existing_quote", False):
+
     col_existing_1, col_existing_2 = st.columns(2)
 
     with col_existing_1:
