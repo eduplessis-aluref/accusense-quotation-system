@@ -5,9 +5,13 @@ import gspread
 import pandas as pd
 
 from google.oauth2.service_account import Credentials
-
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 
 SPREADSHEET_NAME = "AccuSense Quote Database"
+
+QUOTE_DRIVE_FOLDER_ID = "1jB8i_B3uUW4tQHoQYfyEmgGoq9q1ItRd"
+
 
 scope = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -453,4 +457,44 @@ def get_quote_approval_status(quote_number):
 
     except Exception:
 
-        return None     
+        return None
+
+
+def upload_pdf_to_drive(pdf_path, quote_number):
+
+    try:
+
+        drive_service = build(
+            "drive",
+            "v3",
+            credentials=creds
+        )
+
+        file_metadata = {
+            "name": f"{quote_number}.pdf",
+            "parents": [QUOTE_DRIVE_FOLDER_ID]
+        }
+
+        media = MediaFileUpload(
+            pdf_path,
+            mimetype="application/pdf"
+        )
+
+        uploaded_file = drive_service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields="id, webViewLink"
+        ).execute()
+
+        return uploaded_file.get(
+            "webViewLink",
+            ""
+        )
+
+    except Exception as e:
+
+        print(
+            f"Drive upload error: {e}"
+        )
+
+        return ""
