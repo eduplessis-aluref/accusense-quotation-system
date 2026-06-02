@@ -1203,6 +1203,26 @@ if st.session_state.quote_items:
                     signature_file=signature_file,
                     quote_output_type=quote_output_type,
                 )
+                
+                drive_link = gs.upload_pdf_to_drive(
+                    pdf_path,
+                    quote_number
+                )
+
+                if drive_link:
+                    st.success(
+                        "PDF uploaded to Google Drive"
+                    )
+    
+                drive_link = gs.upload_pdf_to_drive(
+                    pdf_path,
+                    quote_number
+                )
+
+                if drive_link:
+                    st.success(
+                        "PDF uploaded to Google Drive"
+                    )
 
                 save_quote_json(
                     quote_number=quote_number,
