@@ -491,7 +491,7 @@ def generate_pdf(
                 134 * mm,  # Identification
                 24 * mm,   # Qty
                 24 * mm,   # Total
-            ]
+            ],
             hAlign="LEFT"
         )
 
@@ -542,7 +542,7 @@ def generate_pdf(
                 12 * mm,   # Qty
                 24 * mm,   # Unit Price
                 24 * mm,   # Total
-            ]
+            ],
             hAlign="LEFT"
         )
 
