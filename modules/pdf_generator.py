@@ -537,7 +537,7 @@ def generate_pdf(
             repeatRows=1,
             colWidths=[
                 32 * mm,   # Product
-                76 * mm,   # Description
+                74 * mm,   # Description
                 14 * mm,   # UOM
                 12 * mm,   # Qty
                 24 * mm,   # Unit Price
