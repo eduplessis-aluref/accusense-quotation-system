@@ -488,10 +488,11 @@ def generate_pdf(
             table_data,
             repeatRows=1,
             colWidths=[
-                110 * mm,
-                25 * mm,
-                45 * mm
+                134 * mm,  # Identification
+                24 * mm,   # Qty
+                24 * mm,   # Total
             ]
+            hAlign="LEFT"
         )
 
     else:
@@ -542,6 +543,7 @@ def generate_pdf(
                 24 * mm,   # Unit Price
                 24 * mm,   # Total
             ]
+            hAlign="LEFT"
         )
 
     product_table.setStyle(TableStyle([
