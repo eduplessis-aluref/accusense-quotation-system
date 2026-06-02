@@ -488,7 +488,7 @@ def generate_pdf(
             table_data,
             repeatRows=1,
             colWidths=[
-                134 * mm,  # Identification
+                133 * mm,  # Identification
                 24 * mm,   # Qty
                 24 * mm,   # Total
             ],
